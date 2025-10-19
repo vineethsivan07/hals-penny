@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import { Bot, User } from 'lucide-react';
 import ReceiptUpload from './ReceiptUpload';
 import MicButton from './MicButton';
 import CameraButton from './CameraButton';
@@ -350,10 +351,11 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
 
   return (
     <div className="chat-interface">
-      <div className="chat-header">
-        <div className="header-top">
+      {/* Header */}
+      <header className="chat-header">
+        <div className="header-content">
           <div className="header-left">
-            <h2>💼 HAL's Penny</h2>
+            <h1 className="app-title">💰 HAL's Penny</h1>
             <div className="connection-status">
               <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
               <span className="status-text">
@@ -370,39 +372,49 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             {userProfile}
           </div>
         </div>
-      </div>
+      </header>
       
-      <div className="chat-messages" ref={messagesEndRef}>
-        {messages.map((message) => (
-          <div key={message.id} className={`message ${message.sender}`}>
-            <div className="message-avatar">
-              {message.sender === 'user' ? '👤' : '💼'}
-            </div>
-            <div className="message-content">
-              <div className="message-text" dangerouslySetInnerHTML={{
-                __html: message.text
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\n/g, '<br>')
-              }}></div>
-              <div className="message-time">{formatTime(message.timestamp)}</div>
-            </div>
-          </div>
-        ))}
-        {isTyping && (
-          <div className="message bot typing">
-            <div className="message-avatar">🤖</div>
-            <div className="message-content">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+      {/* Chat Area */}
+      <main className="chat-messages" ref={messagesEndRef}>
+        <div className="messages-container">
+          {messages.map((message) => (
+            <div key={message.id} className={`message-wrapper ${message.sender === 'user' ? 'user-message' : 'bot-message'}`}>
+              <div className="message-content">
+                <div className={`message-avatar ${message.sender === 'user' ? 'user-avatar' : 'bot-avatar'}`}>
+                  {message.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
+                </div>
+                <div className={`message-bubble ${message.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}>
+                  <div className="message-text" dangerouslySetInnerHTML={{
+                    __html: message.text
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\n/g, '<br>')
+                  }}></div>
+                  <div className="message-time">{formatTime(message.timestamp)}</div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          ))}
+          {isTyping && (
+            <div className="message-wrapper bot-message">
+              <div className="message-content">
+                <div className="message-avatar bot-avatar">
+                  <Bot size={16} />
+                </div>
+                <div className="message-bubble bot-bubble">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
       
-      <div className="chat-input-container">
+      {/* Input Bar */}
+      <footer className="chat-input-container">
         <div className="chat-input-wrapper">
           <input
             type="text"
@@ -411,33 +423,36 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             onKeyPress={handleKeyPress}
             placeholder="Type your message... (e.g., 'I spent $30 on lunch' or 'What did I spend on food last month?')"
             disabled={!isConnected}
+            className="chat-input"
           />
-          <CameraButton 
-            onImageCapture={(file) => {
-              // Handle image capture - you can process the image here
-              console.log('Image captured:', file);
-              // For now, just show a message
-              addMessage(`📸 Image captured: ${file.name}`, 'user');
-            }}
-          />
-          <MicButton 
-            onTranscription={(transcript) => {
-              setInputMessage(transcript);
-              // Auto-send the transcribed message
-              setTimeout(() => {
-                if (transcript.trim()) {
-                  sendMessage();
-                }
-              }, 500);
-            }}
-          />
-          <button 
-            onClick={sendMessage} 
-            disabled={!inputMessage.trim() || !isConnected}
-            className="send-button"
-          >
-            ➤
-          </button>
+          <div className="input-actions">
+            <CameraButton 
+              onImageCapture={(file) => {
+                // Handle image capture - you can process the image here
+                console.log('Image captured:', file);
+                // For now, just show a message
+                addMessage(`📸 Image captured: ${file.name}`, 'user');
+              }}
+            />
+            <MicButton 
+              onTranscription={(transcript) => {
+                setInputMessage(transcript);
+                // Auto-send the transcribed message
+                setTimeout(() => {
+                  if (transcript.trim()) {
+                    sendMessage();
+                  }
+                }, 500);
+              }}
+            />
+            <button 
+              onClick={sendMessage} 
+              disabled={!inputMessage.trim() || !isConnected}
+              className="send-button"
+            >
+              ➤
+            </button>
+          </div>
         </div>
         
         
@@ -479,7 +494,7 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             🤖 AI Insights
           </button>
         </div>
-      </div>
+      </footer>
 
       {showReceiptUpload && (
         <ReceiptUpload
