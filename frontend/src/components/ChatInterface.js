@@ -350,62 +350,57 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="chat-interface">
       {/* Header */}
-      <header className="flex items-center justify-center bg-white border-b border-gray-200 py-3 shadow-sm">
-        <h1 className="text-lg font-semibold text-gray-700">💰 HAL's Penny</h1>
-        <div className="absolute right-4">
-          {userProfile}
+      <header className="chat-header">
+        <div className="header-content">
+          <div className="header-left">
+            <h1 className="app-title">💰 HAL's Penny</h1>
+            <div className="connection-status">
+              <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+              <span className="status-text">
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+            {error && (
+              <div className="error-message">
+                <p>⚠️ {error}</p>
+              </div>
+            )}
+          </div>
+          <div className="header-right">
+            {userProfile}
+          </div>
         </div>
       </header>
       
       {/* Chat Area */}
-      <main className="flex-1 overflow-y-auto px-4 py-4" ref={messagesEndRef}>
-        <div className="max-w-3xl mx-auto flex flex-col gap-4">
+      <main className="chat-messages" ref={messagesEndRef}>
+        <div className="messages-container">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.sender === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`flex items-start gap-2 max-w-[75%] ${
-                  message.sender === "user" ? "flex-row-reverse" : ""
-                }`}
-              >
-                <div
-                  className={`p-2 rounded-full ${
-                    message.sender === "user" ? "bg-blue-500" : "bg-gray-300"
-                  } text-white`}
-                >
-                  {message.sender === "user" ? <User size={16} /> : <Bot size={16} />}
+            <div key={message.id} className={`message-wrapper ${message.sender === 'user' ? 'user-message' : 'bot-message'}`}>
+              <div className="message-content">
+                <div className={`message-avatar ${message.sender === 'user' ? 'user-avatar' : 'bot-avatar'}`}>
+                  {message.sender === 'user' ? <User size={16} /> : <Bot size={16} />}
                 </div>
-
-                <div
-                  className={`rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                    message.sender === "user"
-                      ? "bg-blue-500 text-white"
-                      : "bg-white text-gray-800"
-                  }`}
-                >
-                  <div dangerouslySetInnerHTML={{
+                <div className={`message-bubble ${message.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}>
+                  <div className="message-text" dangerouslySetInnerHTML={{
                     __html: message.text
                       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                       .replace(/\n/g, '<br>')
                   }}></div>
-                  <div className="text-xs opacity-70 mt-1">{formatTime(message.timestamp)}</div>
+                  <div className="message-time">{formatTime(message.timestamp)}</div>
                 </div>
               </div>
             </div>
           ))}
           {isTyping && (
-            <div className="flex justify-start">
-              <div className="flex items-start gap-2 max-w-[75%]">
-                <div className="p-2 rounded-full bg-gray-300 text-white">
+            <div className="message-wrapper bot-message">
+              <div className="message-content">
+                <div className="message-avatar bot-avatar">
                   <Bot size={16} />
                 </div>
-                <div className="rounded-2xl px-4 py-2 text-sm shadow-sm bg-white text-gray-800">
+                <div className="message-bubble bot-bubble">
                   <div className="typing-indicator">
                     <span></span>
                     <span></span>
@@ -419,8 +414,8 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
       </main>
       
       {/* Input Bar */}
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="flex items-center gap-2 p-4">
+      <footer className="chat-input-container">
+        <div className="chat-input-wrapper">
           <input
             type="text"
             value={inputMessage}
@@ -428,34 +423,36 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             onKeyPress={handleKeyPress}
             placeholder="Type your message... (e.g., 'I spent $30 on lunch' or 'What did I spend on food last month?')"
             disabled={!isConnected}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="chat-input"
           />
-          <CameraButton 
-            onImageCapture={(file) => {
-              // Handle image capture - you can process the image here
-              console.log('Image captured:', file);
-              // For now, just show a message
-              addMessage(`📸 Image captured: ${file.name}`, 'user');
-            }}
-          />
-          <MicButton 
-            onTranscription={(transcript) => {
-              setInputMessage(transcript);
-              // Auto-send the transcribed message
-              setTimeout(() => {
-                if (transcript.trim()) {
-                  sendMessage();
-                }
-              }, 500);
-            }}
-          />
-          <button 
-            onClick={sendMessage} 
-            disabled={!inputMessage.trim() || !isConnected}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
+          <div className="input-actions">
+            <CameraButton 
+              onImageCapture={(file) => {
+                // Handle image capture - you can process the image here
+                console.log('Image captured:', file);
+                // For now, just show a message
+                addMessage(`📸 Image captured: ${file.name}`, 'user');
+              }}
+            />
+            <MicButton 
+              onTranscription={(transcript) => {
+                setInputMessage(transcript);
+                // Auto-send the transcribed message
+                setTimeout(() => {
+                  if (transcript.trim()) {
+                    sendMessage();
+                  }
+                }, 500);
+              }}
+            />
+            <button 
+              onClick={sendMessage} 
+              disabled={!inputMessage.trim() || !isConnected}
+              className="send-button"
+            >
+              ➤
+            </button>
+          </div>
         </div>
         
         

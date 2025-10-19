@@ -146,7 +146,7 @@ const openaiService = new OpenAIService();
 // Function to get user subscription preference
 async function getUserSubscription(userId) {
   return new Promise((resolve, reject) => {
-    const userDb = new sqlite3.Database('./expenses.db');
+    const userDb = new sqlite3.Database(dbPath);
     userDb.get('SELECT subscription_plan FROM users WHERE user_id = ?', [userId], (err, row) => {
       if (err) {
         console.error('Error fetching user subscription:', err);
