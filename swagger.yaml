@@ -1,0 +1,502 @@
+openapi: 3.0.3
+info:
+  title: HAL's Penny API
+  description: |
+    AI-powered expense tracking API with natural language processing capabilities.
+    
+    ## Features
+    - 🤖 Multi-tier AI system (Anthropic Claude → OpenAI → Regex fallback)
+    - 💬 Real-time chat interface with WebSocket communication
+    - 📊 Interactive charts and expense visualization
+    - 🎨 Modern, responsive UI with glassmorphism design
+    - 📱 Mobile-friendly design
+    - 💾 SQLite database for persistent storage
+    - 🔄 Session memory and conversation context
+    - ⚡ Optimize/Regular mode for token usage control
+    - 📴 Offline mode with fallback parsing
+    - 📅 Daily budget analytics with configurable limits
+    
+    ## AI Services
+    The API uses a multi-tier fallback system:
+    1. **Primary**: Anthropic Claude API for natural language processing
+    2. **Secondary**: OpenAI API as backup
+    3. **Fallback**: Regex parsing for offline mode
+    
+    ## Authentication
+    Currently no authentication is required. All endpoints are publicly accessible.
+    
+    ## Rate Limits
+    - AI API calls are subject to provider rate limits
+    - Offline mode bypasses AI services for unlimited usage
+  version: 1.0.0
+  contact:
+    name: HAL's Penny Support
+    email: support@halspenny.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.halspenny.com
+    description: Production server
+
+tags:
+  - name: expenses
+    description: Expense management operations
+  - name: analytics
+    description: Analytics and reporting
+  - name: websocket
+    description: Real-time WebSocket events
+
+paths:
+  /api/expenses:
+    get:
+      tags:
+        - expenses
+      summary: Get all expenses
+      description: Retrieve all expenses from the database
+      responses:
+        '200':
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Expense'
+              examples:
+                success:
+                  summary: Successful response
+                  value:
+                    - id: 1
+                      description: "Coffee"
+                      amount: 4.50
+                      category: "food"
+                      date: "2025-10-19"
+                      created_at: "2025-10-19 10:30:00"
+                    - id: 2
+                      description: "Gas"
+                      amount: 45.00
+                      category: "transport"
+                      date: "2025-10-19"
+                      created_at: "2025-10-19 11:15:00"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - expenses
+      summary: Create a new expense
+      description: Add a new expense to the database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseInput'
+            examples:
+              coffee:
+                summary: Coffee expense
+                value:
+                  description: "Coffee"
+                  amount: 4.50
+                  category: "food"
+                  date: "2025-10-19"
+              gas:
+                summary: Gas expense
+                value:
+                  description: "Gas"
+                  amount: 45.00
+                  category: "transport"
+                  date: "2025-10-19"
+      responses:
+        '201':
+          description: Expense created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+              examples:
+                success:
+                  summary: Created expense
+                  value:
+                    id: 1
+                    description: "Coffee"
+                    amount: 4.50
+                    category: "food"
+                    date: "2025-10-19"
+                    created_at: "2025-10-19 10:30:00"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/expenses/{id}:
+    get:
+      tags:
+        - expenses
+      summary: Get expense by ID
+      description: Retrieve a specific expense by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Expense ID
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Expense found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - expenses
+      summary: Update expense
+      description: Update an existing expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Expense ID
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseInput'
+      responses:
+        '200':
+          description: Expense updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - expenses
+      summary: Delete expense
+      description: Delete a specific expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Expense ID
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Expense deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Expense deleted successfully"
+        '404':
+          description: Expense not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/expenses/clear:
+    delete:
+      tags:
+        - expenses
+      summary: Clear all expenses
+      description: Remove all expenses from the database
+      responses:
+        '200':
+          description: All expenses cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "All expenses cleared successfully"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/expenses/stats/daily:
+    get:
+      tags:
+        - analytics
+      summary: Get daily analytics
+      description: Retrieve daywise expense analytics for budget tracking
+      responses:
+        '200':
+          description: Daily analytics data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DailyStats'
+              examples:
+                success:
+                  summary: Daily analytics
+                  value:
+                    - date: "2025-10-19"
+                      transaction_count: 3
+                      total_amount: 100.50
+                      descriptions: "Coffee | Lunch | Gas"
+                      categories: "food | food | transport"
+                    - date: "2025-10-18"
+                      transaction_count: 2
+                      total_amount: 75.25
+                      descriptions: "Dinner | Movie"
+                      categories: "food | entertainment"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Expense:
+      type: object
+      required:
+        - id
+        - description
+        - amount
+        - category
+        - date
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: Unique identifier for the expense
+          example: 1
+        description:
+          type: string
+          description: Description of the expense
+          example: "Coffee"
+        amount:
+          type: number
+          format: float
+          description: Amount spent
+          example: 4.50
+        category:
+          type: string
+          description: Expense category
+          enum: [food, transport, shopping, entertainment, bills, healthcare, education, other]
+          example: "food"
+        date:
+          type: string
+          format: date
+          description: Date of the expense (YYYY-MM-DD)
+          example: "2025-10-19"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the expense was created
+          example: "2025-10-19 10:30:00"
+
+    ExpenseInput:
+      type: object
+      required:
+        - description
+        - amount
+        - category
+        - date
+      properties:
+        description:
+          type: string
+          description: Description of the expense
+          example: "Coffee"
+        amount:
+          type: number
+          format: float
+          description: Amount spent
+          example: 4.50
+        category:
+          type: string
+          description: Expense category
+          enum: [food, transport, shopping, entertainment, bills, healthcare, education, other]
+          example: "food"
+        date:
+          type: string
+          format: date
+          description: Date of the expense (YYYY-MM-DD)
+          example: "2025-10-19"
+
+    DailyStats:
+      type: object
+      required:
+        - date
+        - transaction_count
+        - total_amount
+        - descriptions
+        - categories
+      properties:
+        date:
+          type: string
+          format: date
+          description: Date of the expenses
+          example: "2025-10-19"
+        transaction_count:
+          type: integer
+          description: Number of transactions on this date
+          example: 3
+        total_amount:
+          type: number
+          format: float
+          description: Total amount spent on this date
+          example: 100.50
+        descriptions:
+          type: string
+          description: Pipe-separated list of expense descriptions
+          example: "Coffee | Lunch | Gas"
+        categories:
+          type: string
+          description: Pipe-separated list of expense categories
+          example: "food | food | transport"
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Expense not found"
+
+    WebSocketMessage:
+      type: object
+      description: WebSocket message structure for real-time communication
+      properties:
+        type:
+          type: string
+          description: Message type
+          enum: [parseExpense, saveExpense, processQuery]
+          example: "parseExpense"
+        data:
+          type: object
+          description: Message data
+          properties:
+            message:
+              type: string
+              description: Natural language message
+              example: "I spent $30 on lunch"
+            conversationHistory:
+              type: array
+              description: Previous conversation context
+              items:
+                type: string
+            optimizeMode:
+              type: boolean
+              description: Whether to use optimized AI prompts
+              example: false
+            offlineMode:
+              type: boolean
+              description: Whether to use offline fallback parsing
+              example: false
+
+    WebSocketResponse:
+      type: object
+      description: WebSocket response structure
+      properties:
+        type:
+          type: string
+          description: Response type
+          enum: [expenseParsed, expenseAdded, queryResponse, parseError, queryError, expensesCleared]
+          example: "expenseParsed"
+        data:
+          type: object
+          description: Response data
+          properties:
+            description:
+              type: string
+              example: "lunch"
+            amount:
+              type: number
+              example: 30
+            category:
+              type: string
+              example: "food"
+            date:
+              type: string
+              example: "2025-10-19"
+        error:
+          type: string
+          description: Error message if applicable
+          example: "Failed to parse expense"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (currently not implemented)
+
+security:
+  - {}  # No authentication required currently
+
+externalDocs:
+  description: HAL's Penny Documentation
+  url: https://github.com/halspenny/expense-tracker
