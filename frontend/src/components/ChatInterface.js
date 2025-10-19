@@ -355,7 +355,10 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
       <header className="chat-header">
         <div className="header-content">
           <div className="header-left">
-            <h1 className="app-title">💰 HAL's Penny</h1>
+            <div className="app-logo">
+              <div className="logo-icon">💰</div>
+              <h1 className="app-title">HAL's Penny</h1>
+            </div>
             <div className="connection-status">
               <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
               <span className="status-text">
