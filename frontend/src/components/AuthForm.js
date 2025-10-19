@@ -141,12 +141,11 @@ function AuthForm() {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1>🤖 HAL's Penny</h1>
-          <p>Sign in to track your expenses with AI</p>
-          <div className="auth-info">
-            <p>💡 <strong>First time?</strong> Enable Google/Apple authentication in Firebase Console</p>
-            <p>🔧 <strong>Getting errors?</strong> Check FIREBASE_CONSOLE_SETUP.md for step-by-step configuration</p>
+          <div className="app-logo">
+            <div className="logo-icon">💰</div>
+            <h1>HAL's Penny</h1>
           </div>
+          <p>Track your expenses smartly with AI</p>
         </div>
 
         {error && <div className="auth-error">{error}</div>}
