@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import ApiTest from './ApiTest';
 import './SubscriptionPage.css';
 
 export default function SubscriptionPage({ onSubscriptionSelected }) {
@@ -163,9 +162,6 @@ export default function SubscriptionPage({ onSubscriptionSelected }) {
             You can change your plan anytime in your profile settings.
           </p>
         </div>
-
-        {/* Temporary API Test */}
-        <ApiTest />
       </div>
     </div>
   );
