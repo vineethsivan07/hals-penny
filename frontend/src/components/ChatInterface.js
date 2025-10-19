@@ -15,12 +15,6 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
     return localStorage.getItem('welcomeShown') === 'true';
   });
   const [conversationHistory, setConversationHistory] = useState([]);
-  const [optimizeMode, setOptimizeMode] = useState(() => {
-    return localStorage.getItem('optimizeMode') === 'true';
-  });
-  const [offlineMode, setOfflineMode] = useState(() => {
-    return localStorage.getItem('offlineMode') === 'true';
-  });
   const [showReceiptUpload, setShowReceiptUpload] = useState(false);
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
@@ -178,17 +172,6 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
     
   };
 
-  const toggleOptimizeMode = () => {
-    const newMode = !optimizeMode;
-    setOptimizeMode(newMode);
-    localStorage.setItem('optimizeMode', newMode.toString());
-  };
-
-  const toggleOfflineMode = () => {
-    const newMode = !offlineMode;
-    setOfflineMode(newMode);
-    localStorage.setItem('offlineMode', newMode.toString());
-  };
 
   const generateNaturalExpenseResponse = (expense) => {
     const { description, amount, category } = expense;
@@ -347,9 +330,7 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
     setIsTyping(true);
     socketRef.current.emit('parseExpense', { 
       message,
-      conversationHistory: conversationHistory.slice(-10), // Send last 10 messages for context
-      optimizeMode: optimizeMode,
-      offlineMode: offlineMode
+      conversationHistory: conversationHistory.slice(-10) // Send last 10 messages for context
     });
   };
 
@@ -386,20 +367,6 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             )}
           </div>
           <div className="header-right">
-            <button 
-              className={`optimize-toggle ${optimizeMode ? 'active' : ''}`}
-              onClick={toggleOptimizeMode}
-              title={optimizeMode ? 'Optimize Mode: Reduced token usage' : 'Regular Mode: Full AI responses'}
-            >
-              {optimizeMode ? '⚡ Optimize' : '🔧 Regular'}
-            </button>
-            <button 
-              className={`offline-toggle ${offlineMode ? 'active' : ''}`}
-              onClick={toggleOfflineMode}
-              title={offlineMode ? 'Offline Mode: Uses fallback parsing' : 'Online Mode: Uses AI services'}
-            >
-              {offlineMode ? '📴 Offline' : '🌐 Online'}
-            </button>
             {userProfile}
           </div>
         </div>
@@ -523,9 +490,7 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             if (socketRef.current) {
               socketRef.current.emit('parseExpense', {
                 message: `I spent $${expense.amount} on ${expense.description}`,
-                conversationHistory,
-                optimizeMode,
-                offlineMode
+                conversationHistory
               });
             }
             setShowReceiptUpload(false);

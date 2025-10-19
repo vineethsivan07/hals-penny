@@ -19,6 +19,8 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [subscriptionPlan, setSubscriptionPlan] = useState(null);
+  const [hasSelectedPlan, setHasSelectedPlan] = useState(false);
 
   // Sign up function
   async function signup(email, password, displayName) {
@@ -105,6 +107,66 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Load user subscription preference
+  useEffect(() => {
+    if (currentUser) {
+      loadUserPreferences();
+    }
+  }, [currentUser]);
+
+  async function loadUserPreferences() {
+    try {
+      const response = await fetch(`http://localhost:3000/api/user/preferences/${currentUser.uid}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionPlan(data.subscriptionPlan);
+        setHasSelectedPlan(!!data.subscriptionPlan);
+      }
+    } catch (error) {
+      console.error('Error loading user preferences:', error);
+    }
+  }
+
+  async function saveSubscriptionPlan(plan) {
+    console.log('saveSubscriptionPlan called with plan:', plan);
+    try {
+      const response = await fetch('http://localhost:3000/api/user/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: currentUser.uid,
+          subscriptionPlan: plan,
+          email: currentUser.email,
+          displayName: currentUser.displayName
+        }),
+      });
+
+      console.log('API response status:', response.status);
+      console.log('API response headers:', response.headers);
+      
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('API response data:', responseData);
+        console.log('Setting subscription plan state:', plan);
+        setSubscriptionPlan(plan);
+        setHasSelectedPlan(true);
+        console.log('State updated - hasSelectedPlan should be true');
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        console.error('Response status:', response.status);
+        console.error('Response statusText:', response.statusText);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error saving subscription plan:', error);
+      return false;
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -122,7 +184,10 @@ export function AuthProvider({ children }) {
     resetPassword,
     updateUserProfile,
     signInWithGoogle,
-    signInWithApple
+    signInWithApple,
+    subscriptionPlan,
+    hasSelectedPlan,
+    saveSubscriptionPlan
   };
 
   return (

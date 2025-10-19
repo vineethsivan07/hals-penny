@@ -9,6 +9,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const sqlite3 = require('sqlite3').verbose();
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
@@ -133,10 +134,32 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Import and use user routes
+const userRoutes = require('./routes/user-routes');
+app.use('/api/user', userRoutes);
+
 // Initialize services
 const db = new Database();
 const anthropicService = new AnthropicService();
 const openaiService = new OpenAIService();
+
+// Function to get user subscription preference
+async function getUserSubscription(userId) {
+  return new Promise((resolve, reject) => {
+    const userDb = new sqlite3.Database(dbPath);
+    userDb.get('SELECT subscription_plan FROM users WHERE user_id = ?', [userId], (err, row) => {
+      if (err) {
+        console.error('Error fetching user subscription:', err);
+        resolve('free'); // Default to free if error
+      } else if (row) {
+        resolve(row.subscription_plan);
+      } else {
+        resolve('free'); // Default to free if user not found
+      }
+      userDb.close();
+    });
+  });
+}
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -530,6 +553,10 @@ io.on('connection', (socket) => {
       console.log('Parsing expense:', data.message);
       console.log('Message length:', data.message.length);
       
+      // Get user subscription preference
+      const userSubscription = await getUserSubscription(data.userId || 'anonymous');
+      console.log('User subscription:', userSubscription);
+      
       // Check for rejection responses first - be more specific to avoid false positives
       const message = data.message.toLowerCase().trim();
       
@@ -632,23 +659,58 @@ io.on('connection', (socket) => {
       console.log('📊 Optimization mode:', data.optimizeMode ? 'enabled' : 'disabled');
       console.log('💬 Conversation history length:', data.conversationHistory ? data.conversationHistory.length : 0);
       
-      // Try Anthropic first
-      if (anthropicService.isAvailable) {
-        try {
-          parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
-          serviceUsed = 'anthropic';
-        } catch (error) {
-          console.log('Anthropic failed, trying OpenAI:', error.message);
+      // Use AI services based on subscription plan
+      if (userSubscription === 'free') {
+        // Free mode - use fallback only
+        console.log('🆓 Free mode - using fallback parsing');
+        parsedExpense = anthropicService.fallbackParseExpense(data.message);
+        serviceUsed = 'fallback';
+      } else if (userSubscription === 'base') {
+        // Base plan - use optimized AI
+        console.log('⚡ Base plan - using optimized AI');
+        const optimizeMode = true; // Force optimization for base plan
+        
+        // Try Anthropic first
+        if (anthropicService.isAvailable) {
+          try {
+            parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, optimizeMode);
+            serviceUsed = 'anthropic';
+          } catch (error) {
+            console.log('Anthropic failed, trying OpenAI:', error.message);
+          }
         }
-      }
-      
-      // Try OpenAI if Anthropic failed
-      if (!parsedExpense && openaiService.isAvailable) {
-        try {
-          parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
-          serviceUsed = 'openai';
-        } catch (error) {
-          console.log('OpenAI failed, using fallback:', error.message);
+        
+        // Try OpenAI if Anthropic failed
+        if (!parsedExpense && openaiService.isAvailable) {
+          try {
+            parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, optimizeMode);
+            serviceUsed = 'openai';
+          } catch (error) {
+            console.log('OpenAI failed, using fallback:', error.message);
+          }
+        }
+      } else if (userSubscription === 'premium') {
+        // Premium plan - use full AI capabilities
+        console.log('🚀 Premium plan - using full AI capabilities');
+        
+        // Try Anthropic first
+        if (anthropicService.isAvailable) {
+          try {
+            parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
+            serviceUsed = 'anthropic';
+          } catch (error) {
+            console.log('Anthropic failed, trying OpenAI:', error.message);
+          }
+        }
+        
+        // Try OpenAI if Anthropic failed
+        if (!parsedExpense && openaiService.isAvailable) {
+          try {
+            parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
+            serviceUsed = 'openai';
+          } catch (error) {
+            console.log('OpenAI failed, using fallback:', error.message);
+          }
         }
       }
       

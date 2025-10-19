@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './UserProfile.css';
@@ -7,16 +7,37 @@ export default function UserProfile() {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
+  const profileRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfile(false);
+      }
+    }
+
+    if (showProfile) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfile]);
 
   async function handleLogout() {
+    console.log('Logout button clicked');
     try {
       await logout();
+      console.log('Logout successful');
     } catch (error) {
       console.error('Failed to log out:', error);
     }
   }
 
   function handleProfileDetails() {
+    console.log('Profile details button clicked');
     navigate('/profile');
   }
 
@@ -25,7 +46,7 @@ export default function UserProfile() {
   }
 
   return (
-    <div className="user-profile">
+    <div className="user-profile" ref={profileRef}>
       <button 
         className="profile-trigger"
         onClick={() => setShowProfile(!showProfile)}
