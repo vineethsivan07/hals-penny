@@ -1,0 +1,476 @@
+/* User Profile Styles */
+.user-profile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  z-index: 5001;
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.profile-trigger:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 280px;
+  z-index: 5000;
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.profile-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.profile-avatar-large {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: white;
+}
+
+.profile-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-email {
+  color: #718096;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-provider {
+  margin-top: 0.5rem;
+}
+
+.provider-badge {
+  display: inline-block;
+  background: #f0f0f0;
+  color: #333;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.profile-actions {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-details-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #e6fffa;
+  color: #234e52;
+  border: 1px solid #81e6d9;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.profile-details-button:hover {
+  background: #b2f5ea;
+  transform: translateY(-1px);
+}
+
+.profile-icon {
+  font-size: 1rem;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #fed7d7;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.logout-button:hover {
+  background: #feb2b2;
+  transform: translateY(-1px);
+}
+
+.logout-icon {
+  font-size: 1rem;
+}
+
+/* Profile Details Modal */
+.profile-details-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 0;
+}
+
+.profile-details-content {
+  background: white;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.profile-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.profile-details-header h3 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.close-button {
+  background: #e53e3e;
+  border: none;
+  font-size: 1.5rem;
+  color: white;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.close-button:hover {
+  background: #c53030;
+  transform: scale(1.05);
+}
+
+.profile-details-body {
+  padding: 3rem;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-section {
+  margin-bottom: 1.5rem;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section h4 {
+  margin: 0 0 1rem 0;
+  color: #4a5568;
+  font-size: 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #f7fafc;
+  font-size: 1.2rem;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 1.1rem;
+}
+
+.detail-value {
+  color: #2d3748;
+  font-size: 1.1rem;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+  font-weight: 500;
+}
+
+.user-id {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  background: #f7fafc;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: #4a5568;
+}
+
+.status-active {
+  color: #38a169;
+  font-weight: 500;
+}
+
+.profile-details-footer {
+  padding: 2rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.close-modal-button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+}
+
+.close-modal-button:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .profile-dropdown {
+    background: rgba(26, 32, 44, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .profile-info {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .profile-name {
+    color: #f7fafc;
+  }
+
+  .profile-email {
+    color: #a0aec0;
+  }
+
+  .logout-button {
+    background: #2d1b1b;
+    color: #feb2b2;
+    border-color: #742a2a;
+  }
+
+  .logout-button:hover {
+    background: #742a2a;
+  }
+
+  .profile-details-content {
+    background: #2d3748;
+    color: #f7fafc;
+  }
+
+  .profile-details-header {
+    border-bottom-color: #4a5568;
+  }
+
+  .profile-details-header h3 {
+    color: #f7fafc;
+  }
+
+  .close-button {
+    color: #a0aec0;
+  }
+
+  .close-button:hover {
+    background: #4a5568;
+    color: #f7fafc;
+  }
+
+  .detail-section h4 {
+    color: #e2e8f0;
+    border-bottom-color: #4a5568;
+  }
+
+  .detail-item {
+    border-bottom-color: #4a5568;
+  }
+
+  .detail-label {
+    color: #a0aec0;
+  }
+
+  .detail-value {
+    color: #f7fafc;
+  }
+
+  .user-id {
+    background: #4a5568;
+    color: #a0aec0;
+  }
+
+  .profile-details-footer {
+    border-top-color: #4a5568;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .profile-dropdown {
+    right: -1rem;
+    left: -1rem;
+    min-width: auto;
+    top: calc(100% + 0.25rem);
+  }
+
+  .user-name {
+    max-width: 80px;
+  }
+
+  .profile-trigger {
+    gap: 0.25rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .profile-details-content {
+    max-width: 95%;
+    margin: 0.5rem;
+  }
+
+  .profile-details-header {
+    padding: 1rem;
+  }
+
+  .profile-details-body {
+    padding: 1rem;
+  }
+
+  .profile-details-footer {
+    padding: 1rem;
+  }
+
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .detail-value {
+    text-align: left;
+    max-width: 100%;
+  }
+}

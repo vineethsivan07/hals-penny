@@ -233,18 +233,19 @@ class OpenAIService {
       // Add the current query with context (optimized for token usage)
       const prompt = optimizeMode 
         ? `Query: "${query}" Data: ${JSON.stringify(expenseData)}. Respond briefly.`
-        : `You are an AI assistant for expense tracking. Based on the user's query and the provided expense data, provide a helpful response.
+        : `You are HAL's Penny, a professional financial advisor specializing in personal finance and expense analysis. Based on the user's query and their expense data, provide expert financial guidance.
 
         User Query: "${query}"
 
         Expense Data: ${JSON.stringify(expenseData, null, 2)}
 
-        Provide a natural, conversational response that:
-        1. Answers the user's question directly
-        2. Includes relevant statistics and insights
-        3. Suggests actionable advice if appropriate
-        4. Is friendly and helpful
-        5. References previous conversation context when relevant
+        As their financial advisor, provide a professional response that:
+        1. Answers their financial question with expertise
+        2. Analyzes their spending patterns and provides insights
+        3. Offers strategic financial advice and recommendations
+        4. Maintains a professional yet approachable tone
+        5. Focuses on helping them make informed financial decisions
+        6. References previous conversation context when relevant
 
         Keep the response concise but informative.`;
       
@@ -292,16 +293,16 @@ class OpenAIService {
     
     // Generate responses based on query keywords
     if (lowerQuery.includes('total') || lowerQuery.includes('spent')) {
-      return `You have spent a total of $${totalExpenses.toFixed(2)} across ${expenseCount} transactions, with an average of $${averageExpense.toFixed(2)} per expense.`;
+      return `Based on your financial analysis, you have spent a total of $${totalExpenses.toFixed(2)} across ${expenseCount} transactions, with an average of $${averageExpense.toFixed(2)} per expense. As your financial advisor, I recommend reviewing these patterns to ensure they align with your budget goals.`;
     }
     
     if (lowerQuery.includes('food') || lowerQuery.includes('dining')) {
       const foodTotal = categoryTotals.food || 0;
-      return `You've spent $${foodTotal.toFixed(2)} on food and dining. This represents ${totalExpenses > 0 ? ((foodTotal/totalExpenses)*100).toFixed(1) : 0}% of your total expenses.`;
+      return `Your food and dining expenses total $${foodTotal.toFixed(2)}, representing ${totalExpenses > 0 ? ((foodTotal/totalExpenses)*100).toFixed(1) : 0}% of your total expenses. As your financial advisor, I suggest monitoring this category closely as it often represents a significant portion of discretionary spending.`;
     }
     
     if (lowerQuery.includes('month') || lowerQuery.includes('monthly')) {
-      return `Your monthly spending summary: $${totalExpenses.toFixed(2)} total across ${expenseCount} transactions. Your top spending category is ${topCategory}.`;
+      return `Your monthly financial summary shows $${totalExpenses.toFixed(2)} total across ${expenseCount} transactions, with ${topCategory} being your highest spending category. I recommend analyzing this pattern to optimize your monthly budget allocation.`;
     }
     
     if (lowerQuery.includes('category') || lowerQuery.includes('categories')) {
@@ -309,15 +310,15 @@ class OpenAIService {
         .sort(([,a], [,b]) => b - a)
         .map(([cat, amount]) => `${cat}: $${amount.toFixed(2)}`)
         .join(', ');
-      return `Here's your spending by category: ${categoryList}`;
+      return `Here's your spending analysis by category: ${categoryList}. As your financial advisor, I recommend reviewing these allocations to ensure they support your financial objectives.`;
     }
     
     if (lowerQuery.includes('summary') || lowerQuery.includes('overview')) {
-      return `Expense Summary: $${totalExpenses.toFixed(2)} total, ${expenseCount} transactions, average $${averageExpense.toFixed(2)} per expense. Top category: ${topCategory}.`;
+      return `Financial Summary: $${totalExpenses.toFixed(2)} total across ${expenseCount} transactions, averaging $${averageExpense.toFixed(2)} per expense. Your primary spending category is ${topCategory}. As your financial advisor, I suggest reviewing these patterns to identify opportunities for financial optimization.`;
     }
     
     // Default response
-    return `I can see you have ${expenseCount} expenses totaling $${totalExpenses.toFixed(2)}. Your top spending category is ${topCategory}. How can I help you analyze your expenses further?`;
+    return `I've analyzed your financial data and found ${expenseCount} expenses totaling $${totalExpenses.toFixed(2)}. Your top spending category is ${topCategory}. As your financial advisor, I'm here to help you optimize your financial strategy. What specific aspect would you like to explore?`;
   }
 
   // Generate chart data description

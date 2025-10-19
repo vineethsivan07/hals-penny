@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import ReceiptUpload from './ReceiptUpload';
+import MicButton from './MicButton';
+import CameraButton from './CameraButton';
 import './ChatInterface.css';
 
-const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
+const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowDailyAnalytics, onClearAllExpenses, userProfile, error }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -18,10 +21,18 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
   const [offlineMode, setOfflineMode] = useState(() => {
     return localStorage.getItem('offlineMode') === 'true';
   });
+  const [showReceiptUpload, setShowReceiptUpload] = useState(false);
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
+  const welcomeMessageAdded = useRef(false);
 
   useEffect(() => {
+    // Add default welcome message if no messages exist and welcome message hasn't been added yet
+    if (messages.length === 0 && !welcomeMessageAdded.current) {
+      addMessage("Hello! I'm HAL's Penny, your personal finance advisor. I specialize in expense tracking, budget analysis, and financial planning. I can help you understand your spending habits and make informed financial decisions. Try saying something like 'I spent $25 on coffee' or 'Show me my spending summary'!", 'bot');
+      welcomeMessageAdded.current = true;
+    }
+
     // Initialize socket connection with retry logic
     const connectSocket = () => {
       socketRef.current = io('http://localhost:3000', {
@@ -75,11 +86,28 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
           addMessage(`Got it! I've saved your ${expense.description} expense of $${expense.amount} to your records.`, 'bot');
         });
 
-        socketRef.current.on('expenseParsed', (parsedExpense) => {
+        socketRef.current.on('expenseSaved', (expense) => {
+          console.log('✅ Expense saved confirmation received:', expense);
+          onExpenseAdded(expense);
+          addMessage(`Got it! I've saved your ${expense.description} expense of $${expense.amount} to your records.`, 'bot');
+        });
+
+        socketRef.current.on('expenseParsed', (data) => {
+          console.log('📝 Expense parsed received:', data);
           setIsTyping(false);
-          setPendingExpense(parsedExpense);
-          addMessage(`I found: ${parsedExpense.description} - $${parsedExpense.amount} (${parsedExpense.category})`, 'bot');
+          const expense = data.expense || data; // Handle both formats
+          console.log('📝 Setting pending expense:', expense);
+          setPendingExpense(expense);
+          // Generate natural language response based on expense details
+          const naturalResponse = generateNaturalExpenseResponse(expense);
+          addMessage(naturalResponse, 'bot');
           addMessage('Should I add this to your expense records?', 'bot');
+        });
+
+        socketRef.current.on('expenseRejected', (data) => {
+          setIsTyping(false);
+          setPendingExpense(null);
+          addMessage('Got it! I won\'t add that expense.', 'bot');
         });
 
         socketRef.current.on('parseError', (error) => {
@@ -88,6 +116,7 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
         });
 
         socketRef.current.on('queryResponse', (data) => {
+          console.log('📊 Query response received:', data);
           setIsTyping(false);
           addMessage(data.response, 'bot');
         });
@@ -146,6 +175,7 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
       content: text,
       timestamp: newMessage.timestamp
     }]);
+    
   };
 
   const toggleOptimizeMode = () => {
@@ -160,6 +190,139 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
     localStorage.setItem('offlineMode', newMode.toString());
   };
 
+  const generateNaturalExpenseResponse = (expense) => {
+    const { description, amount, category } = expense;
+    
+    // Generate natural language responses based on expense details
+    const responses = [
+      `I see you spent $${amount} on ${description}. That's categorized as ${category}.`,
+      `Got it! $${amount} for ${description} - I've put that under ${category}.`,
+      `I found a $${amount} expense for ${description} in the ${category} category.`,
+      `You spent $${amount} on ${description}. I've categorized this as ${category}.`,
+      `I see ${description} for $${amount} - that's a ${category} expense.`,
+      `$${amount} for ${description}? I've marked that as ${category}.`
+    ];
+    
+    // Randomly select a response for variety
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const handleClearChat = () => {
+    // Add confirmation message first
+    addMessage('Chat cleared successfully! Your expenses are still saved.', 'bot');
+    
+    // Clear chat messages after a short delay to show the confirmation
+    setTimeout(() => {
+      setMessages([]);
+      setConversationHistory([]);
+      setPendingExpense(null);
+      welcomeMessageAdded.current = false; // Reset welcome message flag
+      
+      // Add the default welcome message after clearing
+      setTimeout(() => {
+        addMessage("Hello! I'm HAL's Penny, your personal finance advisor. I specialize in expense tracking, budget analysis, and financial planning. I can help you understand your spending habits and make informed financial decisions. Try saying something like 'I spent $25 on coffee' or 'Show me my spending summary'!", 'bot');
+        welcomeMessageAdded.current = true;
+      }, 200);
+    }, 1000);
+  };
+
+  const formatAIInsights = (insights, service) => {
+    // Create a visually appealing format with bullet points, warnings, and actions
+    const header = `🤖 **AI Insights** (Powered by ${service.toUpperCase()})\n\n`;
+    
+    // Split insights into sections and format them
+    const lines = insights.split('\n');
+    let formatted = header;
+    
+    let currentSection = '';
+    let inList = false;
+    
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      
+      // Detect section headers
+      if (line.includes('**') || line.includes('Key') || line.includes('Category') || 
+          line.includes('Recommendations') || line.includes('Budget') || line.includes('Patterns') ||
+          line.includes('Warnings') || line.includes('Positive')) {
+        if (inList) {
+          formatted += '\n';
+          inList = false;
+        }
+        formatted += `\n📊 **${line.replace(/\*\*/g, '').trim()}**\n`;
+        currentSection = line.toLowerCase();
+      }
+      // Detect bullet points or list items
+      else if (line.startsWith('-') || line.startsWith('•') || line.startsWith('*') || 
+               line.match(/^\d+\./) || line.includes('Consider') || line.includes('Try') || 
+               line.includes('You could') || line.includes('I notice') || line.includes('Set') ||
+               line.includes('Track') || line.includes('Review')) {
+        if (!inList) {
+          inList = true;
+        }
+        
+        // Format different types of items
+        if (line.includes('warning') || line.includes('concern') || line.includes('high') || 
+            line.includes('excessive') || line.includes('over') || line.includes('too much') ||
+            line.includes('limited') || line.includes('attention')) {
+          formatted += `⚠️ ${line.replace(/^[-•*]\s*/, '').trim()}\n`;
+        } else if (line.includes('recommend') || line.includes('suggest') || line.includes('try') || 
+                   line.includes('consider') || line.includes('action') || line.includes('Set') ||
+                   line.includes('Track') || line.includes('Review')) {
+          formatted += `💡 ${line.replace(/^[-•*]\s*/, '').trim()}\n`;
+        } else if (line.includes('good') || line.includes('great') || line.includes('excellent') || 
+                   line.includes('well') || line.includes('consistent') || line.includes('job')) {
+          formatted += `✅ ${line.replace(/^[-•*]\s*/, '').trim()}\n`;
+        } else {
+          formatted += `• ${line.replace(/^[-•*]\s*/, '').trim()}\n`;
+        }
+      }
+      // Regular paragraphs
+      else {
+        if (inList) {
+          formatted += '\n';
+          inList = false;
+        }
+        formatted += `${line}\n`;
+      }
+    }
+    
+    // Add footer with action items
+    formatted += `\n\n🎯 **Quick Actions:**\n`;
+    formatted += `• 📊 View detailed charts\n`;
+    formatted += `• 📅 Check daily analytics\n`;
+    formatted += `• 💰 Set budget goals\n`;
+    formatted += `• 📝 Track more expenses\n`;
+    
+    return formatted;
+  };
+
+  const handleAIInsights = async () => {
+    try {
+      addMessage('🤖 Analyzing your spending patterns...', 'bot');
+      setIsTyping(true);
+      
+      const response = await fetch('http://localhost:3000/api/expenses/insights');
+      const data = await response.json();
+      
+      setIsTyping(false);
+      
+      if (data.insights) {
+        // Format insights with visual elements
+        const formattedInsights = formatAIInsights(data.insights, data.service);
+        addMessage(formattedInsights, 'bot');
+      } else {
+        addMessage('Sorry, I couldn\'t generate insights at the moment. Please try again later.', 'bot');
+      }
+    } catch (error) {
+      console.error('Error fetching AI insights:', error);
+      setIsTyping(false);
+      addMessage('Sorry, I couldn\'t generate insights at the moment. Please try again later.', 'bot');
+    }
+  };
+
+
+
   const sendMessage = async () => {
     if (!inputMessage.trim() || !isConnected) return;
 
@@ -169,11 +332,16 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
 
     // Check if it's a confirmation to save expense
     if (/yes|yep|yup|sure|ok|okay|save/i.test(message) && pendingExpense) {
+      console.log('✅ Confirmation detected, saving expense:', pendingExpense);
       setIsTyping(true);
       socketRef.current.emit('saveExpense', pendingExpense);
       setPendingExpense(null);
       return;
     }
+    
+    // Debug: Log pending expense status
+    console.log('Pending expense:', pendingExpense);
+    console.log('Message:', message);
 
     // Let the backend AI classify all messages with conversation history
     setIsTyping(true);
@@ -202,27 +370,37 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
   return (
     <div className="chat-interface">
       <div className="chat-header">
-        <h2>🤖 HAL's Penny</h2>
-        <div className="header-controls">
-          <button 
-            className={`optimize-toggle ${optimizeMode ? 'active' : ''}`}
-            onClick={toggleOptimizeMode}
-            title={optimizeMode ? 'Optimize Mode: Reduced token usage' : 'Regular Mode: Full AI responses'}
-          >
-            {optimizeMode ? '⚡ Optimize' : '🔧 Regular'}
-          </button>
-          <button 
-            className={`offline-toggle ${offlineMode ? 'active' : ''}`}
-            onClick={toggleOfflineMode}
-            title={offlineMode ? 'Offline Mode: Uses fallback parsing' : 'Online Mode: Uses AI services'}
-          >
-            {offlineMode ? '📴 Offline' : '🌐 Online'}
-          </button>
-          <div className="connection-status">
-            <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
-            <span className="status-text">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
+        <div className="header-top">
+          <div className="header-left">
+            <h2>💼 HAL's Penny</h2>
+            <div className="connection-status">
+              <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+              <span className="status-text">
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+            {error && (
+              <div className="error-message">
+                <p>⚠️ {error}</p>
+              </div>
+            )}
+          </div>
+          <div className="header-right">
+            <button 
+              className={`optimize-toggle ${optimizeMode ? 'active' : ''}`}
+              onClick={toggleOptimizeMode}
+              title={optimizeMode ? 'Optimize Mode: Reduced token usage' : 'Regular Mode: Full AI responses'}
+            >
+              {optimizeMode ? '⚡ Optimize' : '🔧 Regular'}
+            </button>
+            <button 
+              className={`offline-toggle ${offlineMode ? 'active' : ''}`}
+              onClick={toggleOfflineMode}
+              title={offlineMode ? 'Offline Mode: Uses fallback parsing' : 'Online Mode: Uses AI services'}
+            >
+              {offlineMode ? '📴 Offline' : '🌐 Online'}
+            </button>
+            {userProfile}
           </div>
         </div>
       </div>
@@ -231,10 +409,14 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.sender}`}>
             <div className="message-avatar">
-              {message.sender === 'user' ? '👤' : '🤖'}
+              {message.sender === 'user' ? '👤' : '💼'}
             </div>
             <div className="message-content">
-              <div className="message-text">{message.text}</div>
+              <div className="message-text" dangerouslySetInnerHTML={{
+                __html: message.text
+                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/\n/g, '<br>')
+              }}></div>
               <div className="message-time">{formatTime(message.timestamp)}</div>
             </div>
           </div>
@@ -263,6 +445,25 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
             placeholder="Type your message... (e.g., 'I spent $30 on lunch' or 'What did I spend on food last month?')"
             disabled={!isConnected}
           />
+          <CameraButton 
+            onImageCapture={(file) => {
+              // Handle image capture - you can process the image here
+              console.log('Image captured:', file);
+              // For now, just show a message
+              addMessage(`📸 Image captured: ${file.name}`, 'user');
+            }}
+          />
+          <MicButton 
+            onTranscription={(transcript) => {
+              setInputMessage(transcript);
+              // Auto-send the transcribed message
+              setTimeout(() => {
+                if (transcript.trim()) {
+                  sendMessage();
+                }
+              }, 500);
+            }}
+          />
           <button 
             onClick={sendMessage} 
             disabled={!inputMessage.trim() || !isConnected}
@@ -271,6 +472,8 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
             ➤
           </button>
         </div>
+        
+        
         <div className="chat-suggestions">
           <button 
             className="suggestion-btn"
@@ -291,7 +494,45 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated }) => {
             📈 Summary
           </button>
         </div>
+        
+        <div className="chat-actions">
+          <button className="action-button" onClick={onShowChart}>
+            📊 Show Charts
+          </button>
+          <button className="action-button" onClick={onShowDailyAnalytics}>
+            📅 Daily Analytics
+          </button>
+          <button className="action-button" onClick={onClearAllExpenses}>
+            🧹 Clear All Expenses
+          </button>
+          <button className="action-button" onClick={handleClearChat}>
+            💬 Clear Chat
+          </button>
+          <button className="action-button" onClick={handleAIInsights}>
+            🤖 AI Insights
+          </button>
+        </div>
       </div>
+
+      {showReceiptUpload && (
+        <ReceiptUpload
+          onReceiptProcessed={(expense) => {
+            // Add the extracted expense to messages
+            addMessage(`I found a receipt for ${expense.description} - $${expense.amount}`, 'user');
+            // Process the expense through the normal flow
+            if (socketRef.current) {
+              socketRef.current.emit('parseExpense', {
+                message: `I spent $${expense.amount} on ${expense.description}`,
+                conversationHistory,
+                optimizeMode,
+                offlineMode
+              });
+            }
+            setShowReceiptUpload(false);
+          }}
+          onClose={() => setShowReceiptUpload(false)}
+        />
+      )}
     </div>
   );
 };

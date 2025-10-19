@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import AuthGuard from './components/AuthGuard';
+import UserProfile from './components/UserProfile';
+import ProfilePage from './components/ProfilePage';
 import './App.css';
 import ChatInterface from './components/ChatInterface';
 import ExpenseSummary from './components/ExpenseSummary';
@@ -10,6 +15,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showCharts, setShowCharts] = useState(false);
+  const [showDailyAnalytics, setShowDailyAnalytics] = useState(false);
 
   // Load expenses from API on component mount
   useEffect(() => {
@@ -39,6 +45,29 @@ function App() {
     setExpenses(newExpenses);
   };
 
+  const handleShowChart = () => {
+    setShowCharts(!showCharts);
+    setShowDailyAnalytics(false);
+  };
+
+  const handleShowDailyAnalytics = () => {
+    setShowDailyAnalytics(!showDailyAnalytics);
+    setShowCharts(false);
+  };
+
+  const handleClearAllExpenses = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/expenses/clear', {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        setExpenses([]);
+      }
+    } catch (error) {
+      console.error('Error clearing expenses:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="App">
@@ -51,44 +80,49 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <header className="app-header">
-        <h1>🤖 HAL's Penny</h1>
-        <p>Chat with AI to track expenses and get insights</p>
-        {error && (
-          <div className="error-message">
-            <p>⚠️ {error}</p>
-          </div>
-        )}
-        <div className="header-controls">
-          <button 
-            className="toggle-charts-btn"
-            onClick={() => setShowCharts(!showCharts)}
-          >
-            {showCharts ? '💬 Hide Charts' : '📊 Show Charts'}
-          </button>
+    <Router>
+      <AuthProvider>
+        <div className="App">
+          <AuthGuard>
+            <Routes>
+              <Route path="/" element={
+                <>
+                  <main className="app-main">
+                    <div className={`dashboard ${(showCharts || showDailyAnalytics) ? 'charts-visible' : ''}`}>
+                      <div className="dashboard-left">
+                        <ChatInterface 
+                          onExpenseAdded={addExpense}
+                          onExpensesUpdated={updateExpenses}
+                          onShowChart={handleShowChart}
+                          onShowDailyAnalytics={handleShowDailyAnalytics}
+                          onClearAllExpenses={handleClearAllExpenses}
+                          userProfile={<UserProfile />}
+                          error={error}
+                        />
+                      </div>
+                      
+                      {showCharts && (
+                        <div className="dashboard-right fade-in">
+                          <ExpenseSummary key={`summary-${expenses.length}`} expenses={expenses} />
+                          <ExpenseChart key={`chart-${expenses.length}`} expenses={expenses} />
+                        </div>
+                      )}
+                      
+                      {showDailyAnalytics && (
+                        <div className="dashboard-right fade-in">
+                          <DailyAnalytics key={`daily-${expenses.length}`} expenses={expenses} />
+                        </div>
+                      )}
+                    </div>
+                  </main>
+                </>
+              } />
+              <Route path="/profile" element={<ProfilePage />} />
+            </Routes>
+          </AuthGuard>
         </div>
-      </header>
-      
-      <main className="app-main">
-        <div className="dashboard">
-          <div className="dashboard-left">
-            <ChatInterface 
-              onExpenseAdded={addExpense}
-              onExpensesUpdated={updateExpenses}
-            />
-          </div>
-          
-          {showCharts && (
-            <div className="dashboard-right fade-in">
-              <ExpenseSummary key={`summary-${expenses.length}`} expenses={expenses} />
-              <ExpenseChart key={`chart-${expenses.length}`} expenses={expenses} />
-              <DailyAnalytics key={`daily-${expenses.length}`} expenses={expenses} />
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+      </AuthProvider>
+    </Router>
   );
 }
 

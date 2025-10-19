@@ -1,102 +1,170 @@
-# HAL's Penny
+# HAL's Penny 💼
 
-An intelligent AI expense tracker built with Node.js, Express, Socket.IO, and React. HAL's Penny helps you track expenses through natural language conversations with advanced AI capabilities.
+**Professional AI Financial Advisor & Expense Tracker**
 
-## Features
+A sophisticated expense tracking application powered by AI that acts as your personal financial advisor, helping you manage expenses, analyze spending patterns, and make informed financial decisions.
 
-- 🤖 AI-powered expense tracking through natural language
-- 💬 Real-time chat interface with WebSocket communication
-- 🧠 Multi-tier AI system (Anthropic Claude → OpenAI → Regex fallback)
-- ⚡ Optimize/Regular mode for token usage control
-- 📊 Interactive charts and expense visualization
-- 🎨 Modern, responsive UI with glassmorphism design
-- 📱 Mobile-friendly design
-- 💾 SQLite database for persistent storage
-- 🔄 Session memory and conversation context
+## 🏗️ Project Structure
 
-## Prerequisites
+```
+hals-penny/
+├── backend/                 # Node.js API Server
+│   ├── src/                # Backend source code
+│   ├── config/             # Configuration files
+│   ├── tests/              # Backend tests
+│   └── package.json        # Backend dependencies
+├── frontend/               # React.js Web Application
+│   ├── src/                # Frontend source code
+│   ├── public/             # Static assets
+│   └── package.json        # Frontend dependencies
+├── docs/                   # Documentation
+├── scripts/                # Utility scripts
+└── package.json            # Root project configuration
+```
 
-- Node.js (v14 or higher)
-- npm (comes with Node.js)
+## 🚀 Quick Start
 
-## Installation
-
-1. Clone or download this project
-2. Navigate to the project directory:
-   ```bash
-   cd expense-tracker-app
-   ```
-
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-## Running the Application
-
-### Development Mode (with auto-restart)
 ```bash
+# Install all dependencies
+npm run install:all
+
+# Start both backend and frontend
+npm run dev:all
+
+# Or start individually
+npm run dev          # Backend only
+npm run frontend     # Frontend only
+```
+
+## 🎯 Features
+
+### 💼 Professional Financial Advisor
+- **AI-Powered Analysis**: Multi-tier AI system (Anthropic → OpenAI → Fallback)
+- **Strategic Guidance**: Professional financial advice and recommendations
+- **Spending Insights**: Detailed analysis of spending patterns
+- **Budget Optimization**: Recommendations for financial improvement
+
+### 📱 Modern Interface
+- **Chat Interface**: Natural conversation with AI advisor
+- **Voice Input**: Speech-to-text for hands-free expense entry
+- **Camera Capture**: Photo capture for receipt scanning
+- **Real-time Updates**: Live chat and expense tracking
+
+### 📊 Analytics & Insights
+- **Expense Charts**: Visual spending analysis
+- **Daily Analytics**: Budget tracking and comparisons
+- **Category Breakdown**: Detailed spending by category
+- **Financial Summaries**: Comprehensive expense reports
+
+## 🛠️ Technology Stack
+
+### Backend
+- **Node.js** with Express.js
+- **Socket.io** for real-time communication
+- **SQLite** database
+- **AI Services**: Anthropic Claude, OpenAI GPT
+- **Security**: Helmet, CORS, Rate limiting
+
+### Frontend
+- **React.js** with modern hooks
+- **Chart.js** for data visualization
+- **Lucide React** for icons
+- **Socket.io Client** for real-time updates
+- **Web Speech API** for voice input
+
+## 🔧 Development
+
+```bash
+# Backend development
+cd backend
 npm run dev
-```
 
-### Production Mode
-```bash
+# Frontend development  
+cd frontend
 npm start
+
+# Run tests
+npm run test:all
+
+# Lint code
+npm run lint:all
 ```
 
-## Usage
+## 📡 API Endpoints
 
-1. Start the server using one of the commands above
-2. Open your browser and navigate to `http://localhost:3000`
-3. Start chatting with the bot!
+- `GET /health` - Health check
+- `GET /api/expenses` - Get expenses
+- `POST /api/expenses` - Create expense
+- `GET /api/expenses/stats` - Statistics
+- `GET /api/expenses/stats/daily` - Daily analytics
+- `DELETE /api/expenses/clear` - Clear expenses
 
-## Project Structure
+## 🤖 AI Integration
 
-```
-expense-tracker-app/
-├── public/
-│   ├── index.html      # Main HTML file
-│   ├── style.css       # CSS styles
-│   └── script.js       # Frontend JavaScript
-├── server.js           # Express server
-├── package.json        # Dependencies and scripts
-├── .env               # Environment variables
-└── README.md          # This file
-```
+**Multi-tier AI System:**
+1. **Primary**: Anthropic Claude API (Professional financial advisor)
+2. **Secondary**: OpenAI API (Backup AI service)
+3. **Fallback**: Regex parsing (Offline mode)
 
-## Technologies Used
+## 🐳 Docker Support
 
-- **Backend**: Node.js, Express.js
-- **Real-time Communication**: Socket.IO
-- **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **Styling**: Custom CSS with modern design
-- **Icons**: Font Awesome
-
-## Customization
-
-### Adding New Bot Responses
-
-Edit the `chatbotResponses` object in `server.js` to add new response patterns:
-
-```javascript
-const chatbotResponses = {
-  greeting: [
-    "Hello! How can I help you today?",
-    // Add more responses here
-  ],
-  // Add more categories...
-};
+```bash
+# Build and run with Docker
+npm run docker:build
+npm run docker:run
 ```
 
-### Styling
+## 📝 Environment Variables
 
-Modify `public/style.css` to customize the appearance of the chat interface.
+Create `.env` files in both `backend/` and `frontend/` directories:
 
-## API Endpoints
+```env
+# Backend .env
+PORT=3000
+ANTHROPIC_API_KEY=your_key
+OPENAI_API_KEY=your_key
 
-- `GET /` - Serves the main chat interface
-- WebSocket connection for real-time messaging
+# Frontend .env
+REACT_APP_API_URL=http://localhost:3000
+```
 
-## License
+## 🧪 Testing
 
-ISC
+```bash
+# Run all tests
+npm run test:all
+
+# Backend tests only
+npm run test
+
+# Frontend tests only
+npm run test:frontend
+```
+
+## 📚 Documentation
+
+- [Backend Documentation](./backend/README.md)
+- [Frontend Documentation](./frontend/README.md)
+- [Production Deployment](./PRODUCTION_DEPLOYMENT.md)
+- [API Documentation](./swagger.yaml)
+
+## 🎨 UI Features
+
+- **Light Theme**: Clean, professional design
+- **Responsive Layout**: Works on all devices
+- **Real-time Chat**: Instant AI responses
+- **Voice Commands**: Hands-free interaction
+- **Photo Capture**: Receipt scanning
+- **Financial Insights**: AI-powered analysis
+
+## 🚀 Production Ready
+
+- **Security**: Helmet, CORS, rate limiting
+- **Logging**: Winston for comprehensive logging
+- **Error Handling**: Robust error management
+- **Performance**: Optimized for production
+- **Monitoring**: Health checks and metrics
+
+---
+
+**HAL's Penny** - Your Professional AI Financial Advisor 💼✨

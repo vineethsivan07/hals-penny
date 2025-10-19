@@ -3,7 +3,15 @@ const path = require('path');
 
 class Database {
   constructor() {
-    this.db = new sqlite3.Database(path.join(__dirname, 'expenses.db'));
+    const dbPath = path.join(__dirname, 'expenses.db');
+    console.log('📁 Database path:', dbPath);
+    this.db = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        console.error('❌ Database connection error:', err);
+      } else {
+        console.log('✅ Database connected successfully');
+      }
+    });
     this.init();
   }
 
@@ -12,13 +20,30 @@ class Database {
     this.db.run(`
       CREATE TABLE IF NOT EXISTS expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
         description TEXT NOT NULL,
         amount REAL NOT NULL,
         category TEXT NOT NULL,
         date TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `, (err) => {
+      if (err) {
+        console.error('❌ Error creating expenses table:', err);
+      } else {
+        console.log('✅ Expenses table created/verified');
+      }
+    });
+
+    // Add user_id column to existing expenses table if it doesn't exist
+    this.db.run(`
+      ALTER TABLE expenses ADD COLUMN user_id TEXT
+    `, (err) => {
+      // Ignore error if column already exists
+      if (err && !err.message.includes('duplicate column name')) {
+        console.error('Error adding user_id column:', err);
+      }
+    });
 
     // Create categories table
     this.db.run(`
@@ -215,6 +240,103 @@ class Database {
           reject(err);
         } else {
           resolve({ message: 'All expenses cleared successfully' });
+        }
+      });
+    });
+  }
+
+  // User-specific methods
+  getExpensesByUser(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT * FROM expenses WHERE user_id = ? ORDER BY created_at DESC',
+        [userId],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        }
+      );
+    });
+  }
+
+  addExpenseForUser(userId, expense) {
+    return new Promise((resolve, reject) => {
+      const { description, amount, category, date } = expense;
+      this.db.run(
+        'INSERT INTO expenses (user_id, description, amount, category, date) VALUES (?, ?, ?, ?, ?)',
+        [userId, description, amount, category, date],
+        function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({
+              id: this.lastID,
+              user_id: userId,
+              description,
+              amount,
+              category,
+              date
+            });
+          }
+        }
+      );
+    });
+  }
+
+  clearUserExpenses(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.run('DELETE FROM expenses WHERE user_id = ?', [userId], (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ message: 'User expenses cleared successfully' });
+        }
+      });
+    });
+  }
+
+  getTotalExpensesByUser(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.get(
+        'SELECT SUM(amount) as total FROM expenses WHERE user_id = ?',
+        [userId],
+        (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row.total || 0);
+          }
+        }
+      );
+    });
+  }
+
+  getExpensesByCategoryForUser(userId) {
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        'SELECT category, SUM(amount) as total, COUNT(*) as count FROM expenses WHERE user_id = ? GROUP BY category ORDER BY total DESC',
+        [userId],
+        (err, rows) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        }
+      );
+    });
+  }
+
+  clearExpenses() {
+    return new Promise((resolve, reject) => {
+      this.db.run('DELETE FROM expenses', (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
         }
       });
     });

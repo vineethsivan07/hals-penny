@@ -9,7 +9,7 @@ import {
   Legend,
   ArcElement
 } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 import './ExpenseChart.css';
 
 ChartJS.register(
@@ -126,18 +126,6 @@ const ExpenseChart = ({ expenses }) => {
     }
   };
 
-  const doughnutOptions = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'bottom',
-      },
-      title: {
-        display: true,
-        text: 'Expenses by Category',
-      },
-    },
-  };
 
   if (expenses.length === 0) {
     return (

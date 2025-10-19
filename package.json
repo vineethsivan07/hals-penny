@@ -1,35 +1,36 @@
 {
   "name": "hals-penny",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "HAL's Penny - AI Expense Tracker with Professional Financial Advisor",
+  "main": "backend/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
     "frontend": "cd frontend && PORT=3001 npm start",
     "frontend:build": "cd frontend && npm run build",
     "dev:all": "concurrently \"npm run dev\" \"npm run frontend\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm run frontend:build",
+    "test": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test:all": "npm run test && npm run test:frontend",
+    "lint": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:all": "npm run lint && npm run lint:frontend",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "docker:build": "docker build -t hals-penny .",
+    "docker:run": "docker run -p 3000:3000 hals-penny",
+    "logs": "cd backend && npm run logs",
+    "logs:error": "cd backend && npm run logs:error"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["expense-tracker", "ai", "financial-advisor", "react", "nodejs"],
+  "author": "HAL's Penny Team",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.67.0",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "openai": "^6.5.0",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
-    "sqlite3": "^5.1.7",
-    "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "yamljs": "^0.3.0"
-  },
   "devDependencies": {
-    "concurrently": "^9.2.1",
-    "nodemon": "^3.1.10"
-  }
+    "concurrently": "^9.2.1"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
 }

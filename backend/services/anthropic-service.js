@@ -103,17 +103,18 @@ class AnthropicService {
       // Add the current query with context (optimized for token usage)
       const prompt = optimizeMode 
         ? `Query: "${query}" Data: ${JSON.stringify(expenseData)}. Respond briefly.`
-        : `You are an AI assistant for expense tracking. Based on the user's query and the provided expense data, provide a helpful response.
+        : `You are HAL's Penny, a professional financial advisor specializing in personal finance and expense analysis. Based on the user's query and their expense data, provide expert financial guidance.
 
         User Query: "${query}"
 
         Expense Data: ${JSON.stringify(expenseData, null, 2)}
 
-        Provide a natural, conversational response that:
-        1. Answers the user's question directly
-        2. Includes relevant statistics and insights
-        3. Suggests actionable advice if appropriate
-        4. Is friendly and helpful
+        As their financial advisor, provide a professional response that:
+        1. Answers their financial question with expertise
+        2. Analyzes their spending patterns and provides insights
+        3. Offers strategic financial advice and recommendations
+        4. Maintains a professional yet approachable tone
+        5. Focuses on helping them make informed financial decisions
         5. References previous conversation context when relevant
 
         Keep the response concise but informative.`;
@@ -317,20 +318,21 @@ class AnthropicService {
     
     // Generate response based on query keywords
     if (lowerQuery.includes('total') || lowerQuery.includes('spent')) {
-      return `Your total expenses are $${total.toFixed(2)}. Here's the breakdown by category: ${Object.entries(categoryTotals).map(([cat, amount]) => `${cat}: $${amount.toFixed(2)}`).join(', ')}.`;
+      return `Based on your financial data, your total expenses are $${total.toFixed(2)}. As your financial advisor, I recommend reviewing this breakdown by category: ${Object.entries(categoryTotals).map(([cat, amount]) => `${cat}: $${amount.toFixed(2)}`).join(', ')}. This analysis will help you identify areas for potential savings.`;
     }
     
     if (lowerQuery.includes('food') || lowerQuery.includes('lunch') || lowerQuery.includes('dinner')) {
       const foodTotal = categoryTotals.food || 0;
-      return `You've spent $${foodTotal.toFixed(2)} on food. ${foodTotal > 0 ? 'Consider tracking your food expenses to better manage your budget.' : 'No food expenses found.'}`;
+      return `Your food expenses total $${foodTotal.toFixed(2)}. ${foodTotal > 0 ? 'As your financial advisor, I suggest monitoring your food spending patterns to optimize your budget allocation.' : 'No food expenses recorded yet.'}`;
     }
     
     if (lowerQuery.includes('category') || lowerQuery.includes('categories')) {
       const categories = Object.keys(categoryTotals);
-      return `Your expense categories are: ${categories.join(', ')}. Your highest spending category is ${Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none'}.`;
+      const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none';
+      return `Your expense categories include: ${categories.join(', ')}. Your highest spending category is ${topCategory}, which represents a significant portion of your budget. I recommend reviewing this allocation for potential optimization.`;
     }
     
-    return `I found ${expenseData.length} expenses totaling $${total.toFixed(2)}. Your top spending category is ${Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none'}.`;
+    return `I've analyzed your financial data and found ${expenseData.length} expenses totaling $${total.toFixed(2)}. Your primary spending category is ${Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none'}. As your financial advisor, I suggest reviewing these patterns to ensure they align with your financial goals.`;
   }
 }
 

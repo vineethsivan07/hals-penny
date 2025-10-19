@@ -4,25 +4,18 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment variables
+# Production
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-expenses.db
+.env.production
+.env.test
 
 # Logs
-logs
+logs/
 *.log
 
 # Runtime data
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
@@ -35,19 +28,11 @@ coverage/
 .nyc_output
 
 # Dependency directories
+node_modules/
 jspm_packages/
 
 # Optional npm cache directory
 .npm
-
-# Optional eslint cache
-.eslintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
 
 # Optional REPL history
 .node_repl_history
@@ -60,50 +45,58 @@ jspm_packages/
 
 # dotenv environment variables file
 .env
+.env.test
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
 
-# Next.js build output
+# next.js build output
 .next
 
-# Nuxt.js build / generate output
+# nuxt.js build output
 .nuxt
-dist
 
-# Gatsby files
-.cache/
-public
+# vuepress build output
+.vuepress/dist
 
-# Storybook build outputs
-.out
-.storybook-out
+# Serverless directories
+.serverless/
 
-# Temporary folders
-tmp/
-temp/
+# FuseBox cache
+.fusebox/
 
-# Editor directories and files
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS generated files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Build outputs
-build/
-dist/
+# Database
+*.sqlite
+*.sqlite3
+*.db
 
-# Test files
-test-*.js
-*-test.js
+# Uploads
+uploads/
+temp/
+
+# Docker
+.dockerignore
+
+# Production builds
+dist/
+build/
