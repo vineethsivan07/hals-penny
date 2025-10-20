@@ -54,24 +54,11 @@ const MicButton = ({ onTranscription }) => {
       onClick={toggleRecording}
       className={`mic-button ${isRecording ? 'recording' : ''}`}
       title={isRecording ? "Listening..." : "Click to speak"}
-      style={{
-        background: isRecording ? '#ef4444' : '#10b981',
-        color: 'white',
-        border: 'none',
-        padding: '0.8rem',
-        borderRadius: '20px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: '50px',
-        height: '50px'
-      }}
     >
       {isRecording ? (
-        <MicOff size={20} />
+        <MicOff size={18} />
       ) : (
-        <Mic size={20} />
+        <Mic size={18} />
       )}
     </button>
   );

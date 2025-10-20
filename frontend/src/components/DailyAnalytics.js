@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './DailyAnalytics.css';
 
-const DailyAnalytics = ({ expenses }) => {
+const DailyAnalytics = ({ expenses, userId = 'anonymous' }) => {
+  console.log('DailyAnalytics rendered with userId:', userId);
   const [dailyData, setDailyData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,16 +14,19 @@ const DailyAnalytics = ({ expenses }) => {
 
   useEffect(() => {
     fetchDailyAnalytics();
-  }, [expenses]);
+  }, [expenses, userId]);
 
   const fetchDailyAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3000/api/expenses/stats/daily');
+      console.log('Fetching daily analytics for userId:', userId);
+      const response = await fetch(`http://localhost:3000/api/expenses/stats/daily?userId=${userId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch daily analytics');
       }
       const data = await response.json();
+      console.log('Daily analytics data received:', data);
+      console.log('Data length:', data.length);
       setDailyData(data);
       setError(null);
     } catch (err) {

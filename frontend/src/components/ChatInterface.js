@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import { Bot, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import ReceiptUpload from './ReceiptUpload';
-import MicButton from './MicButton';
-import CameraButton from './CameraButton';
+import ChatInput from './ChatInput';
 import './ChatInterface.css';
 
 const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowDailyAnalytics, onClearAllExpenses, userProfile, error }) => {
+  const { currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
-  const [inputMessage, setInputMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [pendingExpense, setPendingExpense] = useState(null);
@@ -16,7 +17,11 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
   });
   const [conversationHistory, setConversationHistory] = useState([]);
   const [showReceiptUpload, setShowReceiptUpload] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const socketRef = useRef(null);
   const welcomeMessageAdded = useRef(false);
 
@@ -154,6 +159,44 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Load more messages for infinite scroll
+  const loadMoreMessages = async () => {
+    if (isLoadingMore || !hasMoreMessages) return;
+    
+    setIsLoadingMore(true);
+    try {
+      // Simulate loading more messages (in a real app, this would fetch from API)
+      const moreMessages = [
+        { id: `old-${Date.now()}-1`, text: "This is an older message", sender: 'bot', timestamp: Date.now() - 10000 },
+        { id: `old-${Date.now()}-2`, text: "Another older message", sender: 'user', timestamp: Date.now() - 15000 },
+        { id: `old-${Date.now()}-3`, text: "Even older message", sender: 'bot', timestamp: Date.now() - 20000 }
+      ];
+      
+      // Add messages to the beginning of the array
+      setMessages(prevMessages => [...moreMessages, ...prevMessages]);
+      setCurrentPage(prev => prev + 1);
+      
+      // Simulate reaching the end after a few pages
+      if (currentPage >= 3) {
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error('Error loading more messages:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Handle scroll events for infinite scroll
+  const handleScroll = (e) => {
+    const { scrollTop } = e.target;
+    
+    // Load more messages when scrolled to top
+    if (scrollTop === 0 && hasMoreMessages && !isLoadingMore) {
+      loadMoreMessages();
+    }
+  };
+
   const addMessage = (text, sender) => {
     const newMessage = {
       id: Date.now(),
@@ -285,7 +328,8 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
       addMessage('🤖 Analyzing your spending patterns...', 'bot');
       setIsTyping(true);
       
-      const response = await fetch('http://localhost:3000/api/expenses/insights');
+      const userId = currentUser?.uid || 'anonymous';
+      const response = await fetch(`http://localhost:3000/api/expenses/insights?userId=${userId}`);
       const data = await response.json();
       
       setIsTyping(false);
@@ -306,39 +350,19 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
 
 
 
-  const sendMessage = async () => {
-    if (!inputMessage.trim() || !isConnected) return;
-
-    const message = inputMessage.trim();
-    setInputMessage('');
-    addMessage(message, 'user');
-
-    // Check if it's a confirmation to save expense
+  // Handle expense confirmation
+  const handleExpenseConfirmation = (message) => {
     if (/yes|yep|yup|sure|ok|okay|save/i.test(message) && pendingExpense) {
       console.log('✅ Confirmation detected, saving expense:', pendingExpense);
       setIsTyping(true);
-      socketRef.current.emit('saveExpense', pendingExpense);
+      socketRef.current.emit('saveExpense', {
+        ...pendingExpense,
+        userId: currentUser?.uid || 'anonymous'
+      });
       setPendingExpense(null);
-      return;
+      return true;
     }
-    
-    // Debug: Log pending expense status
-    console.log('Pending expense:', pendingExpense);
-    console.log('Message:', message);
-
-    // Let the backend AI classify all messages with conversation history
-    setIsTyping(true);
-    socketRef.current.emit('parseExpense', { 
-      message,
-      conversationHistory: conversationHistory.slice(-10) // Send last 10 messages for context
-    });
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    return false;
   };
 
   const formatTime = (timestamp) => {
@@ -350,117 +374,124 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
 
   return (
     <div className="chat-interface">
-      <div className="chat-header">
-        <div className="header-top">
-          <div className="header-left">
-            <h2>💼 HAL's Penny</h2>
-            <div className="connection-status">
-              <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
-              <span className="status-text">
-                {isConnected ? 'Connected' : 'Disconnected'}
-              </span>
+      {/* Header Section */}
+      <div className="panel-header">
+        <div className="header-left">
+          <div className="app-logo">
+            <div className="logo-icon">💰</div>
+            <h1 className="app-title">HAL's Penny</h1>
+            <span 
+              className="connection-status" 
+              title={isConnected ? 'Connected' : 'Disconnected'}
+            >
+              {isConnected ? '🟢' : '🔴'}
+            </span>
+          </div>
+          {error && (
+            <div className="error-message">
+              <p>⚠️ {error}</p>
             </div>
-            {error && (
-              <div className="error-message">
-                <p>⚠️ {error}</p>
-              </div>
-            )}
-          </div>
-          <div className="header-right">
-            {userProfile}
-          </div>
+          )}
+        </div>
+        <div className="header-right">
+          {userProfile}
         </div>
       </div>
       
-      <div className="chat-messages" ref={messagesEndRef}>
-        {messages.map((message) => (
-          <div key={message.id} className={`message ${message.sender}`}>
-            <div className="message-avatar">
-              {message.sender === 'user' ? '👤' : '💼'}
+      {/* Chat Area */}
+      <main className="chat-messages" ref={messagesContainerRef} onScroll={handleScroll}>
+        <div className="messages-container">
+          {/* Loading indicator for infinite scroll */}
+          {isLoadingMore && (
+            <div className="loading-more">
+              <div className="loading-spinner"></div>
+              <span>Loading more messages...</span>
             </div>
-            <div className="message-content">
-              <div className="message-text" dangerouslySetInnerHTML={{
-                __html: message.text
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\n/g, '<br>')
-              }}></div>
-              <div className="message-time">{formatTime(message.timestamp)}</div>
-            </div>
-          </div>
-        ))}
-        {isTyping && (
-          <div className="message bot typing">
-            <div className="message-avatar">🤖</div>
-            <div className="message-content">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+          )}
+          
+          {messages.map((message) => (
+            <div key={message.id} className={`message-wrapper ${message.sender === 'user' ? 'user-message' : 'bot-message'}`}>
+              <div className="message-content">
+                <div className={`message-avatar ${message.sender === 'user' ? 'user-avatar' : 'bot-avatar'}`}>
+                  {message.sender === 'user' ? <User size={16} /> : <span className="bot-logo">💰</span>}
+                </div>
+                <div className={`message-bubble ${message.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}>
+                  <div className="message-text" dangerouslySetInnerHTML={{
+                    __html: message.text
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\n/g, '<br>')
+                  }}></div>
+                  <div className="message-time">{formatTime(message.timestamp)}</div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          ))}
+          {isTyping && (
+            <div className="message-wrapper bot-message">
+              <div className="message-content">
+                <div className="message-avatar bot-avatar">
+                  <span className="bot-logo">💰</span>
+                </div>
+                <div className="message-bubble bot-bubble">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
       
-      <div className="chat-input-container">
-        <div className="chat-input-wrapper">
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message... (e.g., 'I spent $30 on lunch' or 'What did I spend on food last month?')"
-            disabled={!isConnected}
-          />
-          <CameraButton 
-            onImageCapture={(file) => {
-              // Handle image capture - you can process the image here
-              console.log('Image captured:', file);
-              // For now, just show a message
-              addMessage(`📸 Image captured: ${file.name}`, 'user');
-            }}
-          />
-          <MicButton 
-            onTranscription={(transcript) => {
-              setInputMessage(transcript);
-              // Auto-send the transcribed message
-              setTimeout(() => {
-                if (transcript.trim()) {
-                  sendMessage();
-                }
-              }, 500);
-            }}
-          />
-          <button 
-            onClick={sendMessage} 
-            disabled={!inputMessage.trim() || !isConnected}
-            className="send-button"
-          >
-            ➤
-          </button>
-        </div>
-        
-        
-        <div className="chat-suggestions">
-          <button 
-            className="suggestion-btn"
-            onClick={() => setInputMessage('I spent $25 on coffee')}
-          >
-            💰 Add Expense
-          </button>
-          <button 
-            className="suggestion-btn"
-            onClick={() => setInputMessage('What did I spend on food last month?')}
-          >
-            📊 Query Expenses
-          </button>
-          <button 
-            className="suggestion-btn"
-            onClick={() => setInputMessage('Show me my spending summary')}
-          >
-            📈 Summary
-          </button>
-        </div>
+      {/* Input Bar */}
+      <ChatInput 
+        onSend={(message) => {
+          // Add user message
+          addMessage(message, 'user');
+          
+          // Check for expense confirmation first
+          if (handleExpenseConfirmation(message)) {
+            return;
+          }
+          
+          // Send to backend
+          if (socketRef.current) {
+            setIsTyping(true);
+            socketRef.current.emit('parseExpense', {
+              message,
+              userId: currentUser?.uid || 'anonymous',
+              conversationHistory: conversationHistory.slice(-10)
+            });
+          }
+        }}
+        onImage={(file) => {
+          // Handle image capture - you can process the image here
+          console.log('Image captured:', file);
+          // For now, just show a message
+          addMessage(`📸 Image captured: ${file.name}`, 'user');
+        }}
+        onVoice={(transcript) => {
+          // Add user message
+          addMessage(transcript, 'user');
+          
+          // Check for expense confirmation first
+          if (handleExpenseConfirmation(transcript)) {
+            return;
+          }
+          
+          // Send to backend
+          if (socketRef.current) {
+            setIsTyping(true);
+            socketRef.current.emit('parseExpense', {
+              message: transcript,
+              userId: currentUser?.uid || 'anonymous',
+              conversationHistory: conversationHistory.slice(-10)
+            });
+          }
+        }}
+      />
         
         <div className="chat-actions">
           <button className="action-button" onClick={onShowChart}>
@@ -479,7 +510,6 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             🤖 AI Insights
           </button>
         </div>
-      </div>
 
       {showReceiptUpload && (
         <ReceiptUpload
@@ -490,6 +520,7 @@ const ChatInterface = ({ onExpenseAdded, onExpensesUpdated, onShowChart, onShowD
             if (socketRef.current) {
               socketRef.current.emit('parseExpense', {
                 message: `I spent $${expense.amount} on ${expense.description}`,
+                userId: currentUser?.uid || 'anonymous',
                 conversationHistory
               });
             }

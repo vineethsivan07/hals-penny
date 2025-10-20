@@ -21,6 +21,138 @@ class AnthropicService {
     }
   }
 
+  // Detect if message is a query, command, or expense entry using Claude
+  async detectQuery(message, optimizeMode = false) {
+    // If Anthropic is not available, use fallback immediately
+    if (!this.isAvailable) {
+      return this.fallbackDetectQuery(message);
+    }
+    
+    try {
+      const prompt = optimizeMode 
+        ? `Classify: "${message}" → { "type": "QUERY|COMMAND|EXPENSE_ENTRY", "apiCall": "string" }`
+        : `Analyze the following message and classify it as one of:
+        - QUERY: Questions about expenses, spending, analytics, summaries
+        - COMMAND: Actions like "clear all expenses", "update expense", "delete expense"
+        - EXPENSE_ENTRY: Adding new expenses like "I spent $30 on lunch"
+
+        For COMMAND type, also identify the specific API call:
+        - "clearExpenses" for clearing all expenses
+        - "getExpenses" for showing expenses
+        - "updateExpense" for modifying expenses
+        - "deleteExpense" for removing expenses
+
+        Message: "${message}"
+
+        Return JSON: { "type": "QUERY|COMMAND|EXPENSE_ENTRY", "apiCall": "string" }
+
+        Examples:
+        "I spent $30 on lunch" → {"type": "EXPENSE_ENTRY", "apiCall": ""}
+        "show me my expenses" → {"type": "QUERY", "apiCall": ""}
+        "clear all expenses" → {"type": "COMMAND", "apiCall": "clearExpenses"}
+        "what did I spend on food" → {"type": "QUERY", "apiCall": ""}
+
+        Return only the JSON object, no other text.`;
+
+      const response = await this.anthropic.messages.create({
+        model: "claude-3-haiku-20240307",
+        max_tokens: optimizeMode ? 50 : 100,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const content = response.content[0].text;
+      const result = JSON.parse(content);
+      
+      console.log(`🤖 Anthropic detected: ${result.type}${result.apiCall ? ` (${result.apiCall})` : ''}`);
+      return result;
+    } catch (error) {
+      console.log('Anthropic detection failed, using fallback:', error.message);
+      return this.fallbackDetectQuery(message);
+    }
+  }
+
+  // Fallback detection using regex patterns
+  fallbackDetectQuery(message, optimizeMode = false) {
+    const lowerMessage = message.toLowerCase().trim();
+    
+    console.log(`🔍 Fallback detection for: "${message}" (optimize: ${optimizeMode})`);
+    
+    // Command patterns - check these first
+    if (lowerMessage.includes('clear') && (lowerMessage.includes('all') || lowerMessage.includes('expenses'))) {
+      console.log('🎯 Detected as COMMAND: clearExpenses');
+      return { type: 'COMMAND', apiCall: 'clearExpenses' };
+    }
+    if (lowerMessage.includes('update') && lowerMessage.includes('expense')) {
+      console.log('🎯 Detected as COMMAND: updateExpense');
+      return { type: 'COMMAND', apiCall: 'updateExpense' };
+    }
+    if (lowerMessage.includes('delete') && lowerMessage.includes('expense')) {
+      console.log('🎯 Detected as COMMAND: deleteExpense');
+      return { type: 'COMMAND', apiCall: 'deleteExpense' };
+    }
+    
+    // Query patterns - optimized vs full
+    let queryPatterns;
+    if (optimizeMode) {
+      // Optimized: fewer, faster patterns
+      queryPatterns = [
+        /^show\s+(my\s+)?(expenses|expense)/i,
+        /^what\s+spend/i,
+        /^summary/i,
+        /^analytics/i
+      ];
+    } else {
+      // Full: comprehensive patterns
+      queryPatterns = [
+        /^show\s+(me\s+)?(my\s+)?(spending|expenses|summary|expense)/i,
+        /^what\s+(did\s+i\s+)?spend/i,
+        /^how\s+much\s+(did\s+i\s+)?spend/i,
+        /^summary/i,
+        /^analytics/i,
+        /^report/i,
+        /^chart/i,
+        /^display/i,
+        /^list/i,
+        /^get/i,
+        /^tell\s+me/i,
+        /^breakdown/i,
+        /^total/i
+      ];
+    }
+    
+    if (queryPatterns.some(pattern => pattern.test(lowerMessage))) {
+      console.log('🎯 Detected as QUERY');
+      return { type: 'QUERY', apiCall: '' };
+    }
+    
+    // Check for expense entry patterns (contains amount/money)
+    const expensePatterns = [
+      /\$\d+/,
+      /\d+\s*dollars?/,
+      /\d+\s*euros?/,
+      /\d+\s*rupees?/,
+      /spent\s+\d+/,
+      /paid\s+\d+/,
+      /bought.*\d+/,
+      /cost.*\d+/
+    ];
+    
+    if (expensePatterns.some(pattern => pattern.test(lowerMessage))) {
+      console.log('🎯 Detected as EXPENSE_ENTRY');
+      return { type: 'EXPENSE_ENTRY', apiCall: '' };
+    }
+    
+    // Default to query if it's a question or request
+    if (lowerMessage.includes('?') || lowerMessage.includes('show') || lowerMessage.includes('what') || lowerMessage.includes('how')) {
+      console.log('🎯 Detected as QUERY (default for questions)');
+      return { type: 'QUERY', apiCall: '' };
+    }
+    
+    // Default to expense entry
+    console.log('🎯 Detected as EXPENSE_ENTRY (default)');
+    return { type: 'EXPENSE_ENTRY', apiCall: '' };
+  }
+
   // Parse expense from natural language using Claude
   async parseExpense(message, optimizeMode = false) {
     // If Anthropic is not available, use fallback immediately
@@ -238,13 +370,13 @@ class AnthropicService {
     
     // Determine category based on keywords
     const categoryKeywords = {
-      food: ['lunch', 'dinner', 'breakfast', 'coffee', 'food', 'restaurant', 'grocery', 'meal', 'snack'],
-      transport: ['gas', 'fuel', 'uber', 'taxi', 'bus', 'train', 'transport', 'parking'],
-      shopping: ['shirt', 'clothes', 'shopping', 'store', 'amazon', 'purchase'],
-      entertainment: ['movie', 'game', 'entertainment', 'fun', 'hobby'],
-      bills: ['bill', 'rent', 'electricity', 'water', 'internet', 'phone'],
-      healthcare: ['doctor', 'medicine', 'health', 'medical', 'pharmacy'],
-      education: ['book', 'course', 'education', 'school', 'learning']
+      food: ['lunch', 'dinner', 'breakfast', 'coffee', 'food', 'restaurant', 'grocery', 'meal', 'snack', 'doordash', 'uber eats', 'grubhub', 'delivery', 'takeout', 'pizza', 'burger', 'sandwich', 'salad', 'sushi', 'chinese', 'mexican', 'italian', 'fast food', 'cafe', 'bakery'],
+      transport: ['gas', 'fuel', 'uber', 'taxi', 'bus', 'train', 'transport', 'parking', 'lyft', 'ride'],
+      shopping: ['shirt', 'clothes', 'shopping', 'store', 'amazon', 'purchase', 'walmart', 'target', 'mall'],
+      entertainment: ['movie', 'game', 'entertainment', 'fun', 'hobby', 'netflix', 'spotify', 'concert', 'theater'],
+      bills: ['bill', 'rent', 'electricity', 'water', 'internet', 'phone', 'insurance', 'subscription'],
+      healthcare: ['doctor', 'medicine', 'health', 'medical', 'pharmacy', 'hospital', 'clinic', 'dentist'],
+      education: ['book', 'course', 'education', 'school', 'learning', 'university', 'college', 'training']
     };
     
     let category = 'other';
