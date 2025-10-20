@@ -151,11 +151,11 @@ async function getUserSubscription(userId) {
     userDb.get('SELECT subscription_plan FROM users WHERE user_id = ?', [userId], (err, row) => {
       if (err) {
         console.error('Error fetching user subscription:', err);
-        resolve('premium'); // Default to premium if error
+        resolve('free'); // Default to free if error
       } else if (row) {
         resolve(row.subscription_plan);
       } else {
-        resolve('premium'); // Default to premium if user not found
+        resolve('free'); // Default to free if user not found
       }
       userDb.close();
     });
@@ -243,8 +243,7 @@ app.get('/api/expenses', async (req, res) => {
   const startTime = Date.now();
   try {
     const dbStartTime = Date.now();
-    const userId = req.query.userId || 'anonymous';
-    const expenses = await db.getExpensesByUser(userId);
+    const expenses = await db.getExpenses();
     const dbResponseTime = (Date.now() - dbStartTime) / 1000;
     
     databaseOperations.inc({ operation: 'get_expenses', table: 'expenses', status: 'success' });
@@ -311,8 +310,7 @@ app.get('/api/expenses', async (req, res) => {
  */
 app.post('/api/expenses', async (req, res) => {
   try {
-    const userId = req.body.userId || req.query.userId || 'anonymous';
-    const expense = await db.addExpenseForUser(userId, req.body);
+    const expense = await db.addExpense(req.body);
     res.json(expense);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -333,8 +331,7 @@ app.delete('/api/expenses/clear', async (req, res) => {
 // Daily analytics endpoint
 app.get('/api/expenses/stats/daily', async (req, res) => {
   try {
-    const userId = req.query.userId || 'anonymous';
-    const expenses = await db.getExpensesByUser(userId);
+    const expenses = await db.getExpenses();
     
     // Group expenses by date
     const dailyStats = {};
@@ -376,8 +373,7 @@ app.get('/api/expenses/stats/daily', async (req, res) => {
 // AI Insights endpoint
 app.get('/api/expenses/insights', async (req, res) => {
   try {
-    const userId = req.query.userId || 'anonymous';
-    const expenses = await db.getExpensesByUser(userId);
+    const expenses = await db.getExpenses();
     
     if (expenses.length === 0) {
       return res.json({ 
@@ -585,59 +581,62 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // Use AI to detect message type (query, command, or expense entry)
+      // Use AI to detect message type (query, command, or expense)
       let detectionResult;
       let serviceUsed = 'fallback';
       
-      console.log('🤖 Using AI to detect message type...');
-      
-      // Implement proper AI hierarchy: Anthropic → OpenAI → Fallback
-      console.log('🤖 Using AI hierarchy: Anthropic → OpenAI → Fallback');
-      console.log('📊 Optimization mode:', data.optimizeMode ? 'enabled' : 'disabled');
-      
-      // Determine optimize mode based on user subscription and manual override
-      const shouldOptimizeDetection = userSubscription === 'base' || data.optimizeMode;
-      const optimizeMode = shouldOptimizeDetection;
-      
-      // Try Anthropic first
-      if (anthropicService.isAvailable) {
-        try {
-          console.log('🥇 Trying Anthropic detection...');
-          detectionResult = await anthropicService.detectQuery(data.message, optimizeMode);
+      try {
+        if (userSubscription === 'premium' && anthropicService.isAvailable) {
+          console.log('🤖 Using Anthropic for message detection...');
+          detectionResult = await anthropicService.detectQuery(data.message, data.conversationHistory || []);
           serviceUsed = 'anthropic';
-        } catch (error) {
-          console.log('❌ Anthropic detection failed:', error.message);
-          detectionResult = null;
-        }
-      }
-
-      // Try OpenAI if Anthropic failed or unavailable
-      if (!detectionResult && openaiService.isAvailable) {
-        try {
-          console.log('🥈 Trying OpenAI detection...');
-          detectionResult = await openaiService.detectQuery(data.message, optimizeMode);
+        } else if (userSubscription === 'base' && openaiService.isAvailable) {
+          console.log('🤖 Using OpenAI for message detection...');
+          detectionResult = await openaiService.detectQuery(data.message, data.conversationHistory || []);
           serviceUsed = 'openai';
-        } catch (error) {
-          console.log('❌ OpenAI detection failed:', error.message);
-          detectionResult = null;
+        } else {
+          console.log('🔄 Using fallback detection...');
+          // Fallback regex detection
+          const queryPatterns = [
+            /^show\s+(me\s+)?(my\s+)?(spending|expenses|summary)/i,
+            /^what\s+(did\s+i\s+)?spend/i,
+            /^what\s+(did\s+i\s+)?spent/i,
+            /^how\s+much\s+(did\s+i\s+)?spend/i,
+            /^how\s+much\s+(did\s+i\s+)?spent/i,
+            /^tell\s+me\s+(about\s+)?(my\s+)?(spending|expenses)/i,
+            /^display\s+(my\s+)?(spending|expenses)/i,
+            /^summary/i,
+            /^total\s+(spending|expenses)/i,
+            /^breakdown/i,
+            /^analytics/i,
+            /^report/i,
+            /^chart/i,
+            /^graph/i,
+            /^list\s+(all\s+)?(my\s+)?(expenses|spending)/i,
+            /^all\s+(my\s+)?(expenses|spending)/i,
+            /^clear\s+(all\s+)?(my\s+)?(expenses|spending)/i,
+            /^what.*(last\s+month|this\s+month|yesterday|today)/i,
+            /^how\s+much.*(last\s+month|this\s+month|yesterday|today)/i
+          ];
+          
+          const isQuery = queryPatterns.some(pattern => pattern.test(message));
+          detectionResult = {
+            type: isQuery ? 'QUERY' : 'EXPENSE ENTRY',
+            apiCall: isQuery ? 'getExpenses' : null
+          };
         }
-      }
-
-      // Use fallback if both AI services failed
-      if (!detectionResult) {
-        console.log('🥉 Using fallback detection...');
-        detectionResult = anthropicService.fallbackDetectQuery(data.message, optimizeMode);
-        serviceUsed = 'fallback';
-      }
-      
-      console.log(`🎯 Detection result: ${detectionResult.type}${detectionResult.apiCall ? ` (${detectionResult.apiCall})` : ''} using ${serviceUsed}`);
-      
-      // Handle different message types based on AI detection
-      if (detectionResult.type === 'QUERY') {
-        console.log('🔍 Processing as query...');
-        try {
-          const expenses = await db.getExpensesByUser(data.userId || 'anonymous');
-          let queryResponse;
+        
+        console.log('🔍 Detection result:', detectionResult);
+        
+        // Handle based on detection result
+        if (detectionResult.type === 'QUERY') {
+          console.log('🔍 Detected as query, processing...');
+          console.log('📊 Optimization mode:', data.optimizeMode ? 'enabled' : 'disabled');
+          console.log('💬 Conversation history length:', data.conversationHistory ? data.conversationHistory.length : 0);
+          // Process as query instead of expense
+          try {
+            const expenses = await db.getExpenses();
+            let queryResponse;
 
           // Try Anthropic first
           if (anthropicService.isAvailable) {
@@ -673,71 +672,152 @@ io.on('connection', (socket) => {
           socket.emit('queryError', { message: 'Failed to process query' });
           return;
         }
-      } else if (detectionResult.type === 'COMMAND') {
-        console.log(`⚡ Processing as command: ${detectionResult.apiCall}`);
+      } else if (detectionResult.type === 'EXPENSE ENTRY') {
+        console.log('💰 Processing as expense...');
+        console.log('📊 Optimization mode:', data.optimizeMode ? 'enabled' : 'disabled');
+        console.log('💬 Conversation history length:', data.conversationHistory ? data.conversationHistory.length : 0);
         
-        // Handle different commands
-        if (detectionResult.apiCall === 'clearExpenses') {
-          try {
-            await db.clearExpenses(data.userId || 'anonymous');
-            console.log('✅ All expenses cleared');
-            socket.emit('expensesCleared', { message: 'All expenses have been cleared' });
-            return;
-          } catch (error) {
-            console.error('Error clearing expenses:', error);
-            socket.emit('commandError', { message: 'Failed to clear expenses' });
-            return;
+        let parsedExpense;
+        let serviceUsed = 'fallback';
+        
+        // Use AI services based on subscription plan
+        if (userSubscription === 'free') {
+          // Free mode - use fallback only
+          console.log('🆓 Free mode - using fallback parsing');
+          parsedExpense = anthropicService.fallbackParseExpense(data.message);
+          serviceUsed = 'fallback';
+        } else if (userSubscription === 'base') {
+          // Base plan - use optimized AI
+          console.log('⚡ Base plan - using optimized AI');
+          const optimizeMode = true; // Force optimization for base plan
+          
+          // Try Anthropic first
+          if (anthropicService.isAvailable) {
+            try {
+              parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, optimizeMode);
+              serviceUsed = 'anthropic';
+            } catch (error) {
+              console.log('Anthropic failed, trying OpenAI:', error.message);
+            }
           }
-        } else if (detectionResult.apiCall === 'getExpenses') {
-          try {
-            const expenses = await db.getExpensesByUser(data.userId || 'anonymous');
-            console.log('✅ Expenses retrieved');
-            socket.emit('expensesList', { expenses });
-            return;
-          } catch (error) {
-            console.error('Error getting expenses:', error);
-            socket.emit('commandError', { message: 'Failed to get expenses' });
-            return;
+          
+          // Try OpenAI if Anthropic failed
+          if (!parsedExpense && openaiService.isAvailable) {
+            try {
+              parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, optimizeMode);
+              serviceUsed = 'openai';
+            } catch (error) {
+              console.log('OpenAI failed, using fallback:', error.message);
+            }
           }
+        } else if (userSubscription === 'premium') {
+          // Premium plan - use full AI capabilities
+          console.log('🚀 Premium plan - using full AI capabilities');
+          
+          // Try Anthropic first
+          if (anthropicService.isAvailable) {
+            try {
+              parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
+              serviceUsed = 'anthropic';
+            } catch (error) {
+              console.log('Anthropic failed, trying OpenAI:', error.message);
+            }
+          }
+          
+          // Try OpenAI if Anthropic failed
+          if (!parsedExpense && openaiService.isAvailable) {
+            try {
+              parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
+              serviceUsed = 'openai';
+            } catch (error) {
+              console.log('OpenAI failed, using fallback:', error.message);
+            }
+          }
+        }
+        
+        // Fallback to regex parsing if AI services failed
+        if (!parsedExpense) {
+          console.log('🔄 Using fallback regex parsing');
+          parsedExpense = anthropicService.fallbackParseExpense(data.message);
+          serviceUsed = 'fallback';
+        }
+        
+        if (parsedExpense && parsedExpense.description && parsedExpense.amount) {
+          console.log(`✅ Expense parsed with ${serviceUsed}:`, parsedExpense);
+          socket.emit('expenseParsed', { 
+            expense: parsedExpense, 
+            service: serviceUsed 
+          });
         } else {
-          console.log('❓ Unknown command, treating as expense entry');
-          // Fall through to expense processing
+          console.log('❌ Failed to parse expense');
+          socket.emit('parseError', { message: 'Could not parse expense. Please try again.' });
         }
       }
       
       let parsedExpense;
+      let serviceUsed = 'fallback';
       
       console.log('💰 Processing as expense...');
       console.log('📊 Optimization mode:', data.optimizeMode ? 'enabled' : 'disabled');
       console.log('💬 Conversation history length:', data.conversationHistory ? data.conversationHistory.length : 0);
       
-      // Try Anthropic first for expense parsing
-      if (anthropicService.isAvailable) {
-        try {
-          console.log('🥇 Trying Anthropic expense parsing...');
-          parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, optimizeMode);
-          serviceUsed = 'anthropic';
-        } catch (error) {
-          console.log('❌ Anthropic parsing failed:', error.message);
-          parsedExpense = null;
+      // Use AI services based on subscription plan
+      if (userSubscription === 'free') {
+        // Free mode - use fallback only
+        console.log('🆓 Free mode - using fallback parsing');
+        parsedExpense = anthropicService.fallbackParseExpense(data.message);
+        serviceUsed = 'fallback';
+      } else if (userSubscription === 'base') {
+        // Base plan - use optimized AI
+        console.log('⚡ Base plan - using optimized AI');
+        const optimizeMode = true; // Force optimization for base plan
+        
+        // Try Anthropic first
+        if (anthropicService.isAvailable) {
+          try {
+            parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, optimizeMode);
+            serviceUsed = 'anthropic';
+          } catch (error) {
+            console.log('Anthropic failed, trying OpenAI:', error.message);
+          }
+        }
+        
+        // Try OpenAI if Anthropic failed
+        if (!parsedExpense && openaiService.isAvailable) {
+          try {
+            parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, optimizeMode);
+            serviceUsed = 'openai';
+          } catch (error) {
+            console.log('OpenAI failed, using fallback:', error.message);
+          }
+        }
+      } else if (userSubscription === 'premium') {
+        // Premium plan - use full AI capabilities
+        console.log('🚀 Premium plan - using full AI capabilities');
+        
+        // Try Anthropic first
+        if (anthropicService.isAvailable) {
+          try {
+            parsedExpense = await anthropicService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
+            serviceUsed = 'anthropic';
+          } catch (error) {
+            console.log('Anthropic failed, trying OpenAI:', error.message);
+          }
+        }
+        
+        // Try OpenAI if Anthropic failed
+        if (!parsedExpense && openaiService.isAvailable) {
+          try {
+            parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, data.optimizeMode);
+            serviceUsed = 'openai';
+          } catch (error) {
+            console.log('OpenAI failed, using fallback:', error.message);
+          }
         }
       }
-
-      // Try OpenAI if Anthropic failed or unavailable
-      if (!parsedExpense && openaiService.isAvailable) {
-        try {
-          console.log('🥈 Trying OpenAI expense parsing...');
-          parsedExpense = await openaiService.parseExpense(data.message, data.conversationHistory, optimizeMode);
-          serviceUsed = 'openai';
-        } catch (error) {
-          console.log('❌ OpenAI parsing failed:', error.message);
-          parsedExpense = null;
-        }
-      }
-
+      
       // Use fallback if both AI services failed
       if (!parsedExpense) {
-        console.log('🥉 Using fallback expense parsing...');
         parsedExpense = anthropicService.fallbackParseExpense(data.message);
         serviceUsed = 'fallback';
       }
@@ -759,14 +839,14 @@ io.on('connection', (socket) => {
         return;
       }
       
+      // Send the parsed expense
       socket.emit('expenseParsed', { 
         expense: parsedExpense, 
         service: serviceUsed 
       });
-      
     } catch (error) {
       console.error('Error parsing expense:', error);
-      socket.emit('error', { message: 'Failed to parse expense' });
+      socket.emit('parseError', { message: 'Failed to parse expense' });
     }
   });
 
@@ -824,7 +904,7 @@ io.on('connection', (socket) => {
       
       // Track database operation
       const dbStartTime = Date.now();
-      const expense = await db.addExpenseForUser(data.userId || 'anonymous', data);
+      const expense = await db.addExpense(data);
       const dbResponseTime = (Date.now() - dbStartTime) / 1000;
       
       databaseOperations.inc({ operation: 'add_expense', table: 'expenses', status: 'success' });

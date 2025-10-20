@@ -27,7 +27,8 @@ function AppContent() {
   const loadExpenses = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3000/api/expenses');
+      const userId = currentUser?.uid || 'anonymous';
+      const response = await fetch(`http://localhost:3000/api/expenses?userId=${userId}`);
       const data = await response.json();
       setExpenses(data);
       setError(null);
@@ -129,7 +130,11 @@ function AppContent() {
                 
                 {showDailyAnalytics && (
                   <div className="dashboard-right fade-in">
-                    <DailyAnalytics key={`daily-${expenses.length}`} expenses={expenses} />
+                    <DailyAnalytics 
+                      key={`daily-${expenses.length}`} 
+                      expenses={expenses} 
+                      userId={currentUser?.uid || 'anonymous'} 
+                    />
                   </div>
                 )}
               </div>
